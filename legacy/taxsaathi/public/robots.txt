@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /client/
+Disallow: /partner/
+Disallow: /auth
+Disallow: /logout
+Disallow: /service-order/payment
+
+Sitemap: https://taxsaathi.in/sitemap.xml
+Sitemap: https://taxsaathi.in/sitemap-services.xml
