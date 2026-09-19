@@ -1,0 +1,23 @@
+node_modules/
+client/node_modules/
+client/dist/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+server/storage/*
+!server/storage/.gitkeep
+
+# Imported production data and private legacy files stay outside source control.
+upload/*.sql
+legacy/taxsaathi/*.sql
+server/data/legacy-snapshot.json
+server/data/migration-report.json
+legacy/taxsaathi/storage/**
+legacy/taxsaathi/app/config/*.php
+legacy/taxsaathi/.user.ini
+
+# Local verification and deployment artifacts.
+.render/
+coverage/
+*.log

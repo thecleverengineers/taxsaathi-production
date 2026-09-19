@@ -1,0 +1,76 @@
+services:
+  - type: web
+    name: taxsaathi
+    runtime: node
+    region: singapore
+    plan: free
+    branch: main
+    buildCommand: npm ci && npm --prefix client ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGO_ALLOW_SNAPSHOT
+        value: "false"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: CORS_ORIGIN
+        sync: false
+      - key: FAST2SMS_API_KEY
+        sync: false
+      - key: FAST2SMS_URL
+        value: https://www.fast2sms.com/dev/bulkV2
+      - key: FAST2SMS_ROUTE
+        value: dlt
+      - key: FAST2SMS_SENDER_ID
+        sync: false
+      - key: FAST2SMS_MESSAGE_ID
+        sync: false
+      - key: WHATSAPP_API_URL
+        sync: false
+      - key: WHATSAPP_API_TOKEN
+        sync: false
+      - key: WHATSAPP_SENDER_NUMBER
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+
+  - type: cron
+    name: taxsaathi-workflow-reminders
+    runtime: node
+    region: singapore
+    plan: free
+    schedule: "*/15 * * * *"
+    buildCommand: npm ci
+    startCommand: npm run cron:reminders
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: MONGO_ALLOW_SNAPSHOT
+        value: "false"
