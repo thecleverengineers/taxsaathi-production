@@ -1,0 +1,8 @@
+No syntax errors detected in /mnt/data/realtime-role-push/app/Controllers/PushController.php
+No syntax errors detected in /mnt/data/realtime-role-push/app/Core/RolePushService.php
+No syntax errors detected in /mnt/data/realtime-role-push/app/Core/NotificationService.php
+No syntax errors detected in /mnt/data/realtime-role-push/app/Views/notifications/index.php
+No syntax errors detected in /mnt/data/realtime-role-push/app/Views/notifications/manage.php
+No syntax errors detected in /mnt/data/realtime-role-push/app/Views/layouts/dashboard.php
+No syntax errors detected in /mnt/data/realtime-role-push/config/routes-push.php
+No syntax errors detected in /mnt/data/realtime-role-push/INTEGRATION-HOOKS.php

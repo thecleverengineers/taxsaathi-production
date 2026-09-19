@@ -1,0 +1,18 @@
+Tax Saathi Realtime Role Push package
+
+Install/merge:
+- app/Controllers/PushController.php
+- app/Core/RolePushService.php
+- app/Core/NotificationService.php
+- app/Views/layouts/dashboard.php
+- app/Views/notifications/index.php
+- app/Views/notifications/manage.php
+- public/assets/js/realtime-push.js
+- config/routes-push.php
+
+Reference/support:
+- INTEGRATION-HOOKS.php
+- verify-push-system.sql
+- .env.push.example
+- README.md
+- realtime-role-push.patch
