@@ -16,6 +16,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 const clientDist = path.resolve(projectRoot, 'client/dist');
+const clientIndexPath = path.join(clientDist, 'index.html');
+const clientIndex = fs.existsSync(clientIndexPath)
+  ? fs.readFileSync(clientIndexPath, 'utf8').replace('<script type="module"', '<script type="module" data-cfasync="false"')
+  : null;
 const legacyPublic = path.resolve(projectRoot, 'legacy/taxsaathi/public');
 const legacyStorage = path.resolve(projectRoot, 'legacy/taxsaathi/storage');
 const port = Number(process.env.PORT || 4001);
@@ -75,7 +79,9 @@ app.get('/sitemap.xml', async (_request, response) => {
 if (fs.existsSync(clientDist)) {
   app.use(express.static(clientDist, { index: false, maxAge: '1h' }));
   app.get(/^(?!\/api(?:\/|$)|\/legacy-assets(?:\/|$)|\/payment-assets(?:\/|$)|\/sitemap\.xml$).*/, (_request, response) => {
-    response.sendFile(path.join(clientDist, 'index.html'));
+    response.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    if (clientIndex) return response.type('html').send(clientIndex);
+    return response.sendFile(clientIndexPath);
   });
 } else {
   app.get('/', (_request, response) => {
