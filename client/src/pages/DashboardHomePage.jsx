@@ -4,7 +4,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../components/AuthContext';
 import Icon from '../components/Icons';
 import { EmptyState, OrderRow, PageLoader } from '../components/Ui';
-import { statusLabel } from '../lib/format';
+import { money, statusLabel } from '../lib/format';
 
 const chartColors = ['#087f73', '#f59e0b', '#e83e72', '#8b7cf6', '#39b779', '#2c6f88', '#d97706'];
 
@@ -31,18 +31,22 @@ function DashboardKpi({ stat, index }) {
 export default function DashboardHomePage() {
   const { user } = useAuth();
   const [data, setData] = useState(null);
+  const [reports, setReports] = useState(null);
   const role = user?.role?.slug || 'client';
   const isClient = role === 'client';
   const isExecutive = role === 'executive';
   const isPartner = ['partner', 'partners'].includes(role);
   const isGlobal = ['admin', 'manager'].includes(role);
+  const needsReports = isGlobal || isExecutive;
 
   useEffect(() => {
     if (isPartner) return;
-    api('/dashboard')
-      .then(setData)
-      .catch(() => setData({ stats: [], recentOrders: [], statusSummary: [], notifications: [] }));
-  }, [isPartner]);
+    const requests = [api('/dashboard')];
+    if (needsReports) requests.push(api('/admin/reports'));
+    Promise.all(requests)
+      .then(([dashboard, reportData]) => { setData(dashboard); setReports(reportData || null); })
+      .catch(() => { setData({ stats: [], recentOrders: [], statusSummary: [], notifications: [] }); setReports(null); });
+  }, [isPartner, needsReports]);
 
   const scope = useMemo(() => {
     if (isClient) return {
@@ -90,6 +94,16 @@ export default function DashboardHomePage() {
   const totalStatus = statusSummary.reduce((sum, item) => sum + Number(item.total || 0), 0);
   const maxStatus = Math.max(1, ...statusSummary.map((item) => Number(item.total || 0)));
   const chartItems = statusSummary.slice(0, 7);
+  const reportSummary = reports?.summary || {};
+  const analyticsStatuses = reports?.statuses?.length ? reports.statuses : statusSummary;
+  const analyticsMax = Math.max(1, ...analyticsStatuses.map((item) => Number(item.total || 0)));
+  const completedCount = Number(reportSummary.completed ?? statusSummary.find((item) => item.status === 'completed')?.total ?? 0);
+  const orderCount = Number(reportSummary.orders ?? totalStatus);
+  const completionRate = orderCount ? Math.round((completedCount / orderCount) * 100) : 0;
+  const averageValue = reports ? money(reportSummary.average) : '—';
+  const revenueValue = reports ? money(reportSummary.revenue) : (data.stats?.find((stat) => /value/i.test(stat.label))?.value || '—');
+  const activeServices = data.stats?.find((stat) => /service/i.test(stat.label))?.value || '—';
+  const paidValue = data.stats?.find((stat) => /paid/i.test(stat.label))?.value || '—';
 
   return (
     <div className="workspace-page reference-dashboard-page">
@@ -100,6 +114,7 @@ export default function DashboardHomePage() {
           <p>{scope.intro}</p>
         </div>
         <div className="dashboard-overview-actions">
+          <span className="dashboard-data-status"><i /> Live data</span>
           <Link className="dashboard-outline-button" to={scope.secondary.to}>{scope.secondary.label}</Link>
           <Link className="dashboard-primary-button" to={scope.primary.to}><Icon name={scope.primary.icon} size={15} /> {scope.primary.label}</Link>
         </div>
@@ -133,6 +148,32 @@ export default function DashboardHomePage() {
           {chartItems.length ? <div className="dashboard-column-chart">{chartItems.map((item, index) => <div className="dashboard-chart-column" key={item.status}><div className="dashboard-column-track"><i style={{ height: `${Math.max(16, (Number(item.total || 0) / maxStatus) * 100)}%`, background: chartColors[index % chartColors.length] }} /></div><small>{statusLabel(item.status).split(' ')[0]}</small></div>)}</div> : <EmptyState title="No recent workflow activity." />}
         </section>
       </div>
+
+      <section className="dashboard-analytics-shell">
+        <div className="dashboard-analytics-heading">
+          <div><span className="dashboard-overline">Decision intelligence</span><h3>Performance analytics</h3><p>Role-scoped signals from your live TaxSaathi workflow.</p></div>
+          {needsReports && <Link className="dashboard-panel-link" to="/admin/reports">Open full reports <Icon name="arrow" size={13} /></Link>}
+        </div>
+        <div className="dashboard-analytics-grid">
+          <section className="dashboard-reference-panel dashboard-insight-panel">
+            <div className="dashboard-panel-heading"><div><span>At a glance</span><h3>Business health</h3></div><Icon name="activity" size={16} /></div>
+            <div className="dashboard-insight-metrics">
+              <div><small>Completion rate</small><strong>{completionRate}%</strong><span><i style={{ width: `${completionRate}%` }} /></span></div>
+              <div><small>Average order value</small><strong>{averageValue}</strong><em>Across visible orders</em></div>
+              <div><small>Workflow volume</small><strong>{orderCount}</strong><em>{completedCount} completed</em></div>
+              <div><small>Tracked value</small><strong>{revenueValue}</strong><em>{paidValue} paid / approved</em></div>
+            </div>
+          </section>
+          <section className="dashboard-reference-panel dashboard-service-panel">
+            <div className="dashboard-panel-heading"><div><span>Portfolio mix</span><h3>Top services by value</h3></div><span className="dashboard-period-pill">{activeServices} active</span></div>
+            {reports?.topServices?.length ? <div className="dashboard-service-ranking">{reports.topServices.slice(0, 5).map((item, index) => { const maxValue = Math.max(1, ...reports.topServices.map((service) => Number(service.amount || 0))); return <div className="dashboard-service-row" key={item.service}><span className="dashboard-service-rank">{String(index + 1).padStart(2, '0')}</span><div><strong>{item.service}</strong><span><i style={{ width: `${Math.max(5, (Number(item.amount || 0) / maxValue) * 100)}%` }} /></span></div><b>{money(item.amount)}</b></div>; })}</div> : <div className="dashboard-analytics-empty"><Icon name="bar" size={18} /><strong>{needsReports ? 'No service revenue yet' : 'Detailed mix is role restricted'}</strong><small>{needsReports ? 'Service value will appear as orders are created.' : 'Your dashboard only shows analytics permitted for your account.'}</small></div>}
+          </section>
+        </div>
+        <section className="dashboard-reference-panel dashboard-status-panel">
+          <div className="dashboard-panel-heading"><div><span>Operational pulse</span><h3>Workflow throughput</h3></div><span className="dashboard-period-pill">{analyticsStatuses.length} tracked stages</span></div>
+          {analyticsStatuses.length ? <div className="dashboard-status-bars">{analyticsStatuses.slice(0, 7).map((item, index) => <div className="dashboard-status-bar" key={item.status}><div><span>{item.label || statusLabel(item.status)}</span><b>{item.total}</b></div><span><i style={{ width: `${Math.max(6, (Number(item.total || 0) / analyticsMax) * 100)}%`, background: chartColors[index % chartColors.length] }} /></span></div>)}</div> : <div className="dashboard-analytics-empty"><Icon name="activity" size={18} /><strong>No workflow stages to analyze</strong><small>New activity will populate this view automatically.</small></div>}
+        </section>
+      </section>
 
       <section className="dashboard-reference-panel dashboard-utilization-panel">
         <div className="dashboard-panel-heading"><div><span>Service workflow</span><h3>Current utilization</h3></div><span className="dashboard-period-pill">Open details <Icon name="arrow" size={12} /></span></div>
