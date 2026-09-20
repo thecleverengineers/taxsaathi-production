@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'node:crypto';
 import { effectivePermissions, allowPermissions as permissionMiddleware } from './rbac.mjs';
 
 function jwtSecret() {
@@ -41,10 +42,11 @@ export function signUser(user) {
       legacy_id: Number(user.id),
       role_id: user.role_id ?? null,
       client_id: user.client_id ?? null,
-      partner_id: user.partner_id ?? null
+      partner_id: user.partner_id ?? null,
+      session_id: user.session_id || crypto.randomUUID()
     },
     jwtSecret(),
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '3650d' }
   );
 }
 
@@ -132,7 +134,8 @@ export function setTokenCookie(response, token) {
     secure: String(process.env.COOKIE_SECURE).toLowerCase() === 'true',
     ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
     path: '/',
-    maxAge: 7 * 24 * 60 * 60 * 1000
+    // Persistent sessions remain revocable through account deactivation and logout.
+    maxAge: Number(process.env.SESSION_COOKIE_MAX_AGE_DAYS || 3650) * 24 * 60 * 60 * 1000
   });
 }
 
