@@ -18,7 +18,7 @@ const projectRoot = path.resolve(__dirname, '..');
 const clientDist = path.resolve(projectRoot, 'client/dist');
 const clientIndexPath = path.join(clientDist, 'index.html');
 const clientIndex = fs.existsSync(clientIndexPath)
-  ? fs.readFileSync(clientIndexPath, 'utf8').replace('<script type="module"', '<script type="module" data-cfasync="false"')
+  ? fs.readFileSync(clientIndexPath, 'utf8').replace('<script type="module" crossorigin', '<script data-cfasync="false" crossorigin')
   : null;
 const legacyPublic = path.resolve(projectRoot, 'legacy/taxsaathi/public');
 const legacyStorage = path.resolve(projectRoot, 'legacy/taxsaathi/storage');
