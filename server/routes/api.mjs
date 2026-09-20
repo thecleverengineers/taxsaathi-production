@@ -441,7 +441,7 @@ function partnerProfileKeys(user) {
 }
 
 async function adminPartnerRecords(store) {
-  const [users, roles, userRoles, profiles, partnerOrders, orders, services, clients] = await Promise.all([
+  const [rawUsers, rawRoles, rawUserRoles, rawProfiles, rawPartnerOrders, rawOrders, rawServices, rawClients] = await Promise.all([
     store.find('users', {}, { sort: { id: -1 } }),
     store.find('roles', {}),
     store.find('user_roles', {}),
@@ -451,6 +451,17 @@ async function adminPartnerRecords(store) {
     store.find('services', {}),
     store.find('clients', {})
   ]);
+  // Legacy imports can contain sparse or partially populated records. Keep one
+  // malformed document from turning the whole admin directory into a 500.
+  const rows = (value) => Array.isArray(value) ? value.filter((row) => row && typeof row === 'object') : [];
+  const users = rows(rawUsers);
+  const roles = rows(rawRoles);
+  const userRoles = rows(rawUserRoles);
+  const profiles = rows(rawProfiles);
+  const partnerOrders = rows(rawPartnerOrders);
+  const orders = rows(rawOrders);
+  const services = rows(rawServices);
+  const clients = rows(rawClients);
   const rolesById = new Map(roles.map((role) => [Number(role.id), role]));
   const partnerRoleIds = new Set(roles.filter((role) => isPartnerRole(role)).map((role) => Number(role.id)));
   const partnerRoleByUser = new Map(userRoles
@@ -1635,6 +1646,7 @@ router.get('/admin/partners', ...roleGuard(request => request.app.locals.store, 
 }));
 
 router.get('/admin/partners/:id', ...roleGuard(request => request.app.locals.store, 'admin', 'manager'), asyncRoute(async (request, response) => {
+  if (!Number.isInteger(Number(request.params.id)) || Number(request.params.id) < 1) return responseError(response, 'Partner id must be a positive integer.', 422);
   const partner = (await adminPartnerRecords(request.app.locals.store)).find((row) => Number(row.id) === Number(request.params.id));
   if (!partner) return responseError(response, 'Partner user not found.', 404);
   response.json({ ok: true, partner });
@@ -2287,6 +2299,7 @@ async function adminPartnerDetail(store, id) {
 }
 
 router.get('/admin/partners/:id/workspace', ...roleGuard(request => request.app.locals.store, 'admin', 'manager'), asyncRoute(async (request, response) => {
+  if (!Number.isInteger(Number(request.params.id)) || Number(request.params.id) < 1) return responseError(response, 'Partner id must be a positive integer.', 422);
   const partner = await adminPartnerDetail(request.app.locals.store, request.params.id);
   if (!partner) return responseError(response, 'Partner user not found.', 404);
   response.json({ ok: true, partner });
