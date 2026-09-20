@@ -7,7 +7,12 @@
     <title>TaxSaathi</title>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <div id="root">
+      <div class="app-bootstrap-fallback" role="status" aria-live="polite">
+        <strong>TaxSaathi</strong>
+        <span>Loading your secure workspace…</span>
+      </div>
+    </div>
+    <script type="module" data-cfasync="false" src="/src/main.jsx"></script>
   </body>
 </html>
