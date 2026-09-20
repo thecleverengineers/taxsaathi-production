@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import PDFDocument from 'pdfkit';
 import {
   allowRoles,
+  allowPermissions,
   authRequired,
   clearTokenCookie,
   isStaff,
@@ -35,6 +36,8 @@ import {
 import { saveUpload, streamStoredFile } from '../lib/file-store.mjs';
 import { rateLimit } from '../lib/rate-limit.mjs';
 import { runWorkflowReminders } from '../lib/workflow.mjs';
+import { recordAudit } from '../lib/audit.mjs';
+import { permissionCatalogRows } from '../lib/rbac.mjs';
 
 const router = express.Router();
 const otpStore = new Map();
@@ -78,6 +81,7 @@ const numericId = (value) => {
 };
 
 const roleGuard = (store, ...roles) => [authRequired(store), allowRoles(...roles)];
+const permissionGuard = (store, ...permissions) => [authRequired(store), allowPermissions(...permissions)];
 const loginRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 25, message: 'Too many sign-in attempts. Please try again later.' });
 const otpRateLimit = rateLimit({ windowMs: 10 * 60 * 1000, max: 5, message: 'Too many OTP requests. Please try again later.' });
 const publicFormRateLimit = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, message: 'Too many submissions. Please try again later.' });
@@ -215,6 +219,50 @@ function serializeNotification(row) {
 
 function isGlobalRole(auth) {
   return ['admin', 'manager'].includes(roleSlug(auth));
+}
+
+async function getCommandCenterMetrics(store) {
+  const [totalUsers, activeUsers, corporateAccounts, executives, totalCases, completedCases, cancelledCases, rejectedCases, overdueCases, slaRiskCases, pendingDocuments, pendingApprovals, pendingPayments, outstandingInvoices, activeSubscriptions, expiringSubscriptions, securityAlerts, auditEvents, backupRuns] = await Promise.all([
+    store.count('users', {}),
+    store.count('users', { is_active: 1 }),
+    store.count('clients', { client_type: { $in: ['corporate', 'company', 'business'] } }),
+    store.count('users', { role_id: 3 }),
+    store.count('orders', {}),
+    store.count('orders', { status: 'completed' }),
+    store.count('orders', { status: 'cancelled' }),
+    store.count('orders', { status: 'rejected' }),
+    store.count('orders', { due_date: { $lt: new Date().toISOString() }, status: { $ne: 'completed' } }),
+    store.count('orders', { sla_status: { $in: ['at_risk', 'risk', 'overdue'] } }),
+    store.count('order_documents', { document_status: { $in: ['submitted', 'pending', 'processing', 'requires_review'] } }),
+    store.count('approvals', { status: 'pending' }),
+    store.count('orders', { payment_status: { $in: ['pending', 'unpaid', 'partial', 'partially_paid'] } }),
+    store.count('invoices', { $or: [{ status: { $in: ['unpaid', 'pending', 'overdue', 'partially_paid'] } }, { payment_status: { $in: ['unpaid', 'pending', 'overdue', 'partially_paid'] } }] }),
+    store.count('subscriptions', { status: { $in: ['active', 'trialing'] } }),
+    store.count('subscriptions', { status: { $in: ['active', 'trialing'] }, expires_at: { $lt: new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)).toISOString() } }),
+    store.count('notifications', { severity: { $in: ['warning', 'danger', 'critical'] } }),
+    store.count('audit_logs', {}),
+    store.find('backup_runs', {}, { sort: { created_at: -1 }, limit: 1 })
+  ]);
+
+  return {
+    total_users: totalUsers,
+    active_users: activeUsers,
+    corporate_accounts: corporateAccounts,
+    active_executives: executives,
+    active_cases: Math.max(0, totalCases - completedCases - cancelledCases - rejectedCases),
+    completed_cases: completedCases,
+    overdue_cases: overdueCases,
+    sla_risk_cases: slaRiskCases,
+    documents_awaiting_verification: pendingDocuments,
+    approvals_pending: pendingApprovals,
+    payments_pending: pendingPayments,
+    outstanding_invoices: outstandingInvoices,
+    active_subscriptions: activeSubscriptions,
+    subscriptions_expiring: expiringSubscriptions,
+    security_alerts: securityAlerts,
+    audit_events: auditEvents,
+    backup: backupRuns[0] || null
+  };
 }
 
 function partnerOwnerFilter(auth) {
@@ -540,6 +588,7 @@ async function getDashboard(store, request) {
     statusSummary,
     recentOrders: await Promise.all(orders.slice(0, 8).map((order) => resolveOrder(store, order))),
     notifications: (await notificationRows(store, request.auth.user.id, 8, request.auth)).slice(0, 8),
+    adminMetrics: isGlobalRole(request.auth) ? await getCommandCenterMetrics(store) : null,
     dataMode: store.mode
   };
 }
@@ -794,6 +843,7 @@ router.post('/auth/login', loginRateLimit, asyncRoute(async (request, response) 
   await store.update('users', { id: Number(user.id) }, { last_login_at: isoNow() });
   const token = signUser(user);
   setTokenCookie(response, token);
+  await recordAudit(store, request, { actorUserId: user.id, action: 'auth.login', resourceType: 'user', resourceId: user.id });
   response.json({ ok: true, token, user: await currentUserResponse(store, user) });
 }));
 
@@ -1773,6 +1823,7 @@ router.post('/auth/change-password', authRequired((request) => request.app.local
   if (newPassword.length < 8) return responseError(response, 'New password must be at least eight characters.');
   if (!current.password_hash || !(await bcrypt.compare(oldPassword, compatibleBcryptHash(current.password_hash)))) return responseError(response, 'Current password is incorrect.', 401);
   await request.app.locals.store.update('users', { id: Number(current.id) }, { password_hash: await bcrypt.hash(newPassword, 12), updated_at: isoNow() });
+  await recordAudit(request.app.locals.store, request, { action: 'user.password.changed', resourceType: 'user', resourceId: current.id });
   response.json({ ok: true, message: 'Password changed successfully.' });
 }));
 
@@ -1882,13 +1933,14 @@ router.get('/orders/:id/activity', authRequired((request) => request.app.locals.
 }));
 
 // Role and permission administration.
-router.get('/admin/roles', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+router.get('/admin/roles', ...permissionGuard(request => request.app.locals.store, 'users.roles.manage'), asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
-  const [roles, assignments, permissions] = await Promise.all([store.find('roles', {}, { sort: { id: 1 } }), store.find('user_roles', {}), store.find('permission_catalog', {}, { sort: { id: 1 } })]);
+  const [roles, assignments, storedPermissions] = await Promise.all([store.find('roles', {}, { sort: { id: 1 } }), store.find('user_roles', {}), store.find('permission_catalog', {}, { sort: { id: 1 } })]);
+  const permissions = storedPermissions.length ? storedPermissions : permissionCatalogRows();
   response.json({ ok: true, roles: roles.map((role) => ({ ...role, users: assignments.filter((item) => Number(item.role_id) === Number(role.id)).length })), permissions });
 }));
 
-router.post('/admin/users/:id/roles', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+router.post('/admin/users/:id/roles', ...permissionGuard(request => request.app.locals.store, 'users.roles.manage'), asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
   const user = await store.findOne('users', { id: Number(request.params.id) });
   if (!user) return responseError(response, 'User not found.', 404);
@@ -1901,15 +1953,17 @@ router.post('/admin/users/:id/roles', ...roleGuard(request => request.app.locals
   for (const roleId of roleIds) await store.insert('user_roles', { user_id: user.id, role_id: roleId, created_at: isoNow(), updated_at: isoNow() });
   const primaryRoleId = Number(request.body.primary_role_id || roleIds[0]);
   const updated = await store.update('users', { id: user.id }, { role_id: primaryRoleId, updated_at: isoNow() });
+  await recordAudit(store, request, { action: 'user.roles.updated', resourceType: 'user', resourceId: user.id, previousValue: { role_id: user.role_id }, newValue: { role_ids: roleIds, primary_role_id: primaryRoleId } });
   response.json({ ok: true, user: await currentUserResponse(store, updated) });
 }));
 
-router.post('/admin/users/:id/password', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+router.post('/admin/users/:id/password', ...permissionGuard(request => request.app.locals.store, 'security.manage'), asyncRoute(async (request, response) => {
   const password = String(request.body.password || '');
   if (password.length < 8) return responseError(response, 'Password must be at least eight characters.');
   const user = await request.app.locals.store.findOne('users', { id: Number(request.params.id) });
   if (!user) return responseError(response, 'User not found.', 404);
   await request.app.locals.store.update('users', { id: user.id }, { password_hash: await bcrypt.hash(password, 12), updated_at: isoNow() });
+  await recordAudit(request.app.locals.store, request, { action: 'user.password.reset', resourceType: 'user', resourceId: user.id });
   response.json({ ok: true, message: 'Password updated.' });
 }));
 
@@ -2029,6 +2083,24 @@ router.get('/admin/activity', ...roleGuard(request => request.app.locals.store, 
   const filter = request.query.order_id ? { order_id: Number(request.query.order_id) } : {};
   const activity = await request.app.locals.store.find('activity_logs', filter, { sort: { id: -1 }, limit: Math.min(500, Number(request.query.limit || 100)) });
   response.json({ ok: true, activity });
+}));
+
+router.get('/admin/audit', ...permissionGuard(request => request.app.locals.store, 'audit.view'), asyncRoute(async (request, response) => {
+  const filter = {};
+  if (request.query.actor_user_id) filter.actor_user_id = Number(request.query.actor_user_id);
+  if (request.query.resource_type) filter.resource_type = String(request.query.resource_type);
+  if (request.query.action) filter.action = { $regex: String(request.query.action), $options: 'i' };
+  if (request.query.search) {
+    const search = String(request.query.search).slice(0, 80);
+    filter.$or = [
+      { action: { $regex: search, $options: 'i' } },
+      { resource_type: { $regex: search, $options: 'i' } },
+      { reason: { $regex: search, $options: 'i' } }
+    ];
+  }
+  const limit = Math.min(500, Math.max(1, Number(request.query.limit || 100)));
+  const audit = await request.app.locals.store.find('audit_logs', filter, { sort: { id: -1, created_at: -1 }, limit });
+  response.json({ ok: true, audit, total: audit.length });
 }));
 
 // Partner CRM functionality retained from the PHP portal.
