@@ -123,6 +123,27 @@ export class DataStore {
         { key: { role_id: 1 }, name: 'user_roles_role' }
       ],
       roles: [{ key: { slug: 1 }, name: 'roles_slug' }],
+      audit_logs: [
+        { key: { actor_user_id: 1, created_at: -1 }, name: 'audit_logs_actor_recent' },
+        { key: { resource_type: 1, resource_id: 1, created_at: -1 }, name: 'audit_logs_resource_recent' },
+        { key: { action: 1, created_at: -1 }, name: 'audit_logs_action_recent' }
+      ],
+      sessions: [
+        { key: { user_id: 1, last_active_at: -1 }, name: 'sessions_user_recent' },
+        { key: { token_hash: 1 }, name: 'sessions_token_hash' }
+      ],
+      organizations: [
+        { key: { slug: 1 }, name: 'organizations_slug' },
+        { key: { status: 1, created_at: -1 }, name: 'organizations_status_recent' }
+      ],
+      organization_members: [
+        { key: { organization_id: 1, user_id: 1 }, name: 'organization_members_org_user' },
+        { key: { user_id: 1, status: 1 }, name: 'organization_members_user_status' }
+      ],
+      subscriptions: [
+        { key: { organization_id: 1, status: 1 }, name: 'subscriptions_org_status' },
+        { key: { expires_at: 1, status: 1 }, name: 'subscriptions_expiry_status' }
+      ],
       services: [
         { key: { slug: 1 }, name: 'services_slug' },
         { key: { is_active: 1, sort_order: 1 }, name: 'services_public_order' }
