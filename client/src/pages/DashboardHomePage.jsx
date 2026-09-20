@@ -109,6 +109,13 @@ export default function DashboardHomePage() {
         {(data.stats || []).slice(0, 4).map((stat, index) => <DashboardKpi key={stat.label} stat={stat} index={index} />)}
       </div>
 
+      <section className="dashboard-quick-actions-panel">
+        <div className="dashboard-quick-actions-heading"><div><span>Workspace shortcuts</span><h3>Quick actions</h3></div><small>Available for your role</small></div>
+        <div className="dashboard-quick-actions-grid">
+          {scope.actions.map(([label, to, icon]) => <Link className="dashboard-quick-action" to={to} key={to}><span><Icon name={icon} size={17} /></span><strong>{label}</strong><Icon name="arrow" size={13} /></Link>)}
+        </div>
+      </section>
+
       <div className="dashboard-chart-grid">
         <section className="dashboard-reference-panel dashboard-donut-panel">
           <div className="dashboard-panel-heading"><div><span>Workflow status</span><h3>Case distribution</h3></div><button className="dashboard-live-pill">Live</button></div>
