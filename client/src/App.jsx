@@ -16,7 +16,8 @@ import PaymentPage from './pages/PaymentPage';
 import SupportPage from './pages/SupportPage';
 import ProfilePage from './pages/ProfilePage';
 import { AboutPage, CalculatorPage, ContactPage, LegalPage } from './pages/PublicPages';
-import { AdminAuditPage, AdminContentPage, AdminNotificationsPage, AdminPartnerDetailPage, AdminPartnersPage, AdminPaymentSettingsPage, AdminReportsPage, AdminServicesPage, AdminUsersPage, ExecutivePayoutsPage } from './pages/AdminPages';
+import { AdminAuditPage, AdminContentPage, AdminNotificationsPage, AdminPartnersPage, AdminPaymentSettingsPage, AdminReportsPage, AdminServicesPage, AdminUsersPage, ExecutivePayoutsPage } from './pages/AdminPages';
+import { AdminExecutiveDetailPage, AdminExecutivesPage, AdminIntelligencePage, AdminLeadDetailPage, AdminManagementPage, AdminMarketingPage, AdminNotificationWorkflowsPage, AdminPartnerProfilePage, AdminUserDetailPage } from './pages/AdminAdvancedPages';
 import AdvancedAdminPage from './pages/AdvancedAdminPage';
 
 function Protected({ children, roles }) {
@@ -60,13 +61,22 @@ export default function App() {
       <Route path="/admin/orders" element={<Protected roles={['admin', 'manager', 'executive']}><OrdersPage /></Protected>} />
       <Route path="/admin/orders/:id" element={<Protected roles={['admin', 'manager', 'executive']}><OrderDetailPage /></Protected>} />
       <Route path="/admin/users" element={<Protected roles={['admin', 'manager']}><AdminUsersPage /></Protected>} />
+      <Route path="/admin/users/:id" element={<Protected roles={['admin', 'manager']}><AdminUserDetailPage /></Protected>} />
       <Route path="/admin/services" element={<Protected roles={['admin', 'manager']}><AdminServicesPage /></Protected>} />
       <Route path="/admin/partners" element={<Protected roles={['admin', 'manager']}><AdminPartnersPage /></Protected>} />
-      <Route path="/admin/partners/:id" element={<Protected roles={['admin', 'manager']}><AdminPartnerDetailPage /></Protected>} />
+      <Route path="/admin/partners/:id" element={<Protected roles={['admin', 'manager']}><AdminPartnerProfilePage /></Protected>} />
+      <Route path="/admin/partners/:id/workspace" element={<Protected roles={['admin', 'manager']}><AdminPartnerProfilePage /></Protected>} />
+      <Route path="/admin/executive" element={<Protected roles={['admin', 'manager']}><AdminExecutivesPage /></Protected>} />
+      <Route path="/admin/executive/:id" element={<Protected roles={['admin', 'manager']}><AdminExecutiveDetailPage /></Protected>} />
       <Route path="/admin/reports" element={<Protected roles={['admin', 'manager', 'executive']}><AdminReportsPage /></Protected>} />
       <Route path="/admin/notifications" element={<Protected roles={['admin', 'manager', 'executive']}><AdminNotificationsPage /></Protected>} />
       <Route path="/admin/audit" element={<Protected roles={['admin', 'manager']}><AdminAuditPage /></Protected>} />
       <Route path="/admin/content" element={<Protected roles={['admin']}><AdminContentPage /></Protected>} />
+      <Route path="/admin/management" element={<Protected roles={['admin']}><AdminManagementPage /></Protected>} />
+      <Route path="/admin/marketing" element={<Protected roles={['admin', 'manager']}><AdminMarketingPage /></Protected>} />
+      <Route path="/admin/intelligence" element={<Protected roles={['admin']}><AdminIntelligencePage /></Protected>} />
+      <Route path="/admin/notification-workflows" element={<Protected roles={['admin']}><AdminNotificationWorkflowsPage /></Protected>} />
+      <Route path="/admin/operations/leads/:id" element={<Protected roles={['admin', 'manager']}><AdminLeadDetailPage /></Protected>} />
       <Route path="/admin/operations/:section" element={<Protected roles={['admin', 'manager']}><AdvancedAdminPageWrapper /></Protected>} />
       <Route path="/admin/operations" element={<Protected roles={['admin', 'manager']}><AdvancedAdminPage /></Protected>} />
       <Route path="/admin/payment-settings" element={<Protected roles={['admin']}><AdminPaymentSettingsPage /></Protected>} />
