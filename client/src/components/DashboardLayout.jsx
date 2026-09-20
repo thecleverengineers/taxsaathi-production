@@ -7,7 +7,7 @@ import { statusLabel } from '../lib/format';
 
 const nav = {
   admin: [
-    ['Dashboard', '/dashboard', 'dashboard'], ['Orders', '/admin/orders', 'orders'], ['Services', '/admin/services', 'briefcase'], ['Users', '/admin/users', 'users'], ['Partners', '/admin/partners', 'users'], ['Operations', '/admin/operations', 'activity'], ['Reports', '/admin/reports', 'bar'], ['Audit logs', '/admin/audit', 'shield'], ['Coupons & payments', '/admin/payment-settings', 'wallet'], ['Notifications', '/notifications', 'bell'], ['Content & settings', '/admin/content', 'settings']
+    ['Dashboard', '/dashboard', 'dashboard'], ['Orders', '/admin/orders', 'orders'], ['Services', '/admin/services', 'briefcase'], ['Users', '/admin/users', 'users'], ['Partners', '/admin/partners', 'users'], ['Executives', '/admin/executive', 'users'], ['Operations', '/admin/operations', 'activity'], ['SEO & marketing', '/admin/marketing', 'trending'], ['Intelligence lab', '/admin/intelligence', 'sparkles'], ['Reports', '/admin/reports', 'bar'], ['Audit logs', '/admin/audit', 'shield'], ['Application management', '/admin/management', 'settings'], ['Coupons & payments', '/admin/payment-settings', 'wallet'], ['Notifications', '/notifications', 'bell'], ['Notification workflows', '/admin/notification-workflows', 'bell'], ['Content & settings', '/admin/content', 'settings']
   ],
   manager: [
     ['Dashboard', '/dashboard', 'dashboard'], ['Orders', '/admin/orders', 'orders'], ['Partners', '/admin/partners', 'users'], ['Operations', '/admin/operations', 'activity'], ['Reports', '/admin/reports', 'bar'], ['Audit logs', '/admin/audit', 'shield'], ['Notifications', '/notifications', 'bell'], ['Support inbox', '/support', 'support']
@@ -62,10 +62,8 @@ export default function DashboardLayout() {
       <div className={`sidebar-backdrop ${sidebar ? 'show' : ''}`} onClick={() => setSidebar(false)} />
       <aside className={`dashboard-sidebar ${sidebar ? 'open' : ''}`}>
         <div className="sidebar-top"><Link className="sidebar-brand" to="/dashboard"><span className="sidebar-logo"><img src={assetUrl(site.site_logo)} alt="" /></span><span><strong>{site.site_name}</strong><small>{user?.role?.name || 'Workspace'}</small></span></Link><button className="icon-button mobile-only" onClick={() => setSidebar(false)}><Icon name="close" /></button></div>
-        <div className="sidebar-user"><span className="avatar">{(user?.name || 'U').slice(0, 1).toUpperCase()}</span><span><strong>{user?.name || 'User'}</strong><small>{user?.email || user?.phone || ''}</small></span><i /></div>
         <div className="sidebar-section-label">Workspace</div>
         <nav className="sidebar-nav">{navItems.map(([label, path, icon]) => <NavLink key={path} to={path} className={isActive(path) ? 'active' : ''} onClick={() => setSidebar(false)}><span className="nav-icon"><Icon name={icon} size={17} /></span><span>{label}</span>{isActive(path) && <b />}</NavLink>)}</nav>
-        <div className="sidebar-note"><Icon name="shield" size={18} /><div><strong>Secure workflow</strong><span>Your portal keeps orders, documents, and updates together.</span></div></div>
         <button className="sidebar-logout" onClick={logout}><Icon name="logout" size={17} /> Sign out</button>
       </aside>
       <div className="dashboard-main">
