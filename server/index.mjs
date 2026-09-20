@@ -42,7 +42,9 @@ const publicUrl = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || `
 const allowedOrigins = String(process.env.CORS_ORIGIN || publicUrl)
   .split(',')
   .map((value) => value.trim())
-  .filter(Boolean);
+  .concat(['https://taxsaathi.in', 'https://www.taxsaathi.in'])
+  .filter(Boolean)
+  .filter((value, index, values) => values.indexOf(value) === index);
 
 const store = await new DataStore().connect();
 const app = express();
