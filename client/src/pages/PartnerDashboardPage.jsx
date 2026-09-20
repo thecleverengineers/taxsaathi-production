@@ -32,6 +32,15 @@ export default function PartnerDashboardPage() {
         actions={<Link className="button light" to="/partner/orders">Open partner orders <Icon name="arrow" size={16} /></Link>}
       />
 
+      <section className="dashboard-quick-actions-panel partner-quick-actions">
+        <div className="dashboard-quick-actions-heading"><div><span>Partner shortcuts</span><h3>Quick actions</h3></div><small>Available for your role</small></div>
+        <div className="dashboard-quick-actions-grid">
+          <Link className="dashboard-quick-action" to="/partner/orders"><span><Icon name="orders" size={17} /></span><strong>My orders</strong><Icon name="arrow" size={13} /></Link>
+          <Link className="dashboard-quick-action" to="/partner/profile"><span><Icon name="userCircle" size={17} /></span><strong>My profile</strong><Icon name="arrow" size={13} /></Link>
+          <Link className="dashboard-quick-action" to="/support"><span><Icon name="support" size={17} /></span><strong>Support</strong><Icon name="arrow" size={13} /></Link>
+        </div>
+      </section>
+
       <div className="stats-grid">
         <StatCard label="My partner orders" value={stats.total_orders || 0} icon="orders" tone="indigo" />
         <StatCard label="Approved orders" value={stats.approved || 0} icon="check" tone="cyan" />
