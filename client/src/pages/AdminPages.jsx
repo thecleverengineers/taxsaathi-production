@@ -41,6 +41,22 @@ export function AdminNotificationsPage() {
   return <div className="workspace-page"><PageIntro eyebrow="Activity center" title="Notifications" text="Keep track of order movement and operational updates." actions={<button className="button light" onClick={readAll}>Mark all read</button>} /><div className="notification-center-card"><div className="notification-center-head"><span><strong>{data.unread_count}</strong> unread updates</span><span className="live-pill"><i /> Live polling</span></div>{data.items.length ? data.items.map((item) => <div className={`center-notification ${item.is_read ? '' : 'unread'}`} key={`${item.id}-${item.uid || ''}`}><span className={`notification-dot ${item.severity || 'info'}`} /><div><strong>{item.title}</strong><p>{item.message}</p><small>{item.time_ago} · {item.status_label || item.severity}</small></div></div>) : <EmptyState icon="bell" title="No notifications yet." />}</div></div>;
 }
 
+export function AdminAuditPage() {
+  const [rows, setRows] = useState(null);
+  const [search, setSearch] = useState('');
+  const [resourceType, setResourceType] = useState('');
+  useEffect(() => {
+    const query = new URLSearchParams({ limit: '200' });
+    if (search.trim()) query.set('search', search.trim());
+    if (resourceType) query.set('resource_type', resourceType);
+    setRows(null);
+    api(`/admin/audit?${query.toString()}`).then((payload) => setRows(payload.audit || [])).catch(() => setRows([]));
+  }, [search, resourceType]);
+  if (!rows) return <PageLoader label="Loading audit history…" />;
+  const resourceTypes = [...new Set(rows.map((row) => row.resource_type).filter(Boolean))].sort();
+  return <div className="workspace-page"><PageIntro eyebrow="Security and governance" title="Audit history" text="Append-only records of sensitive actions across the TaxSaathi workspace." /><div className="filter-panel"><div className="search-field compact"><Icon name="search" size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search actions, resources, or reasons…" /></div><select className="input compact-input" value={resourceType} onChange={(event) => setResourceType(event.target.value)}><option value="">All resources</option>{resourceTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select><span className="result-count">{rows.length} events</span></div><section className="panel"><Table rows={rows} empty="No audit events match the current filters." columns={[{ key: 'action', label: 'Action', render: (row) => <strong className="table-primary">{row.action}</strong> }, { key: 'resource_type', label: 'Resource', render: (row) => `${row.resource_type}${row.resource_id ? ` #${row.resource_id}` : ''}` }, { key: 'actor_user_id', label: 'Actor', render: (row) => row.actor_user_id ? `User #${row.actor_user_id}${row.actor_role ? ` · ${row.actor_role}` : ''}` : 'System' }, { key: 'reason', label: 'Reason', render: (row) => row.reason || '—' }, { key: 'created_at', label: 'Time', render: (row) => dateLabel(row.created_at) }]} /></section></div>;
+}
+
 export function AdminContentPage() {
   const [settings, setSettings] = useState(null); const [message, setMessage] = useState('');
   useEffect(() => { api('/admin/settings').then((payload) => setSettings(payload.settings || [])).catch(() => setSettings([])); }, []);
