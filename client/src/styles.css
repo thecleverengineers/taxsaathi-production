@@ -1432,3 +1432,29 @@ h1, h2, h3, strong { letter-spacing: -.025em; }
   .reference-service-body p { min-height: 0; }
   .reference-testimonial { padding: 22px; }
 }
+
+/* Final compact desktop scale */
+.reference-intro h1 {
+  font-size: clamp(38px, 4.7vw, 64px);
+}
+
+.reference-section-head h2,
+.reference-workflow-copy h2 {
+  font-size: clamp(30px, 3.5vw, 48px);
+}
+
+.reference-collage-note h2 {
+  font-size: clamp(26px, 2.9vw, 40px);
+}
+
+.reference-cta h2 {
+  font-size: clamp(28px, 3.2vw, 44px);
+}
+
+@media (max-width: 680px) {
+  .reference-intro h1 { font-size: clamp(36px, 10.5vw, 50px); }
+  .reference-section-head h2,
+  .reference-workflow-copy h2 { font-size: clamp(28px, 8.5vw, 36px); }
+  .reference-collage-note h2 { font-size: clamp(25px, 7.8vw, 33px); }
+  .reference-cta h2 { font-size: clamp(27px, 7.8vw, 35px); }
+}
