@@ -7,10 +7,10 @@ import { statusLabel } from '../lib/format';
 
 const nav = {
   admin: [
-    ['Dashboard', '/dashboard', 'dashboard'], ['Orders', '/admin/orders', 'orders'], ['Services', '/admin/services', 'briefcase'], ['Users', '/admin/users', 'users'], ['Partners', '/admin/partners', 'users'], ['Operations', '/admin/operations', 'activity'], ['Reports', '/admin/reports', 'bar'], ['Coupons & payments', '/admin/payment-settings', 'wallet'], ['Notifications', '/notifications', 'bell'], ['Content & settings', '/admin/content', 'settings']
+    ['Dashboard', '/dashboard', 'dashboard'], ['Orders', '/admin/orders', 'orders'], ['Services', '/admin/services', 'briefcase'], ['Users', '/admin/users', 'users'], ['Partners', '/admin/partners', 'users'], ['Operations', '/admin/operations', 'activity'], ['Reports', '/admin/reports', 'bar'], ['Audit logs', '/admin/audit', 'shield'], ['Coupons & payments', '/admin/payment-settings', 'wallet'], ['Notifications', '/notifications', 'bell'], ['Content & settings', '/admin/content', 'settings']
   ],
   manager: [
-    ['Dashboard', '/dashboard', 'dashboard'], ['Orders', '/admin/orders', 'orders'], ['Partners', '/admin/partners', 'users'], ['Operations', '/admin/operations', 'activity'], ['Reports', '/admin/reports', 'bar'], ['Notifications', '/notifications', 'bell'], ['Support inbox', '/support', 'support']
+    ['Dashboard', '/dashboard', 'dashboard'], ['Orders', '/admin/orders', 'orders'], ['Partners', '/admin/partners', 'users'], ['Operations', '/admin/operations', 'activity'], ['Reports', '/admin/reports', 'bar'], ['Audit logs', '/admin/audit', 'shield'], ['Notifications', '/notifications', 'bell'], ['Support inbox', '/support', 'support']
   ],
   executive: [
     ['Dashboard', '/dashboard', 'dashboard'], ['Assigned orders', '/admin/orders', 'orders'], ['Reports', '/admin/reports', 'bar'], ['Payouts', '/executive/payouts', 'wallet'], ['Notifications', '/notifications', 'bell']
