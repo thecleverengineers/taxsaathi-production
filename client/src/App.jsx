@@ -16,7 +16,7 @@ import PaymentPage from './pages/PaymentPage';
 import SupportPage from './pages/SupportPage';
 import ProfilePage from './pages/ProfilePage';
 import { AboutPage, CalculatorPage, ContactPage, LegalPage } from './pages/PublicPages';
-import { AdminContentPage, AdminNotificationsPage, AdminPartnerDetailPage, AdminPartnersPage, AdminPaymentSettingsPage, AdminReportsPage, AdminServicesPage, AdminUsersPage, ExecutivePayoutsPage } from './pages/AdminPages';
+import { AdminAuditPage, AdminContentPage, AdminNotificationsPage, AdminPartnerDetailPage, AdminPartnersPage, AdminPaymentSettingsPage, AdminReportsPage, AdminServicesPage, AdminUsersPage, ExecutivePayoutsPage } from './pages/AdminPages';
 import AdvancedAdminPage from './pages/AdvancedAdminPage';
 
 function Protected({ children, roles }) {
@@ -65,6 +65,7 @@ export default function App() {
       <Route path="/admin/partners/:id" element={<Protected roles={['admin', 'manager']}><AdminPartnerDetailPage /></Protected>} />
       <Route path="/admin/reports" element={<Protected roles={['admin', 'manager', 'executive']}><AdminReportsPage /></Protected>} />
       <Route path="/admin/notifications" element={<Protected roles={['admin', 'manager', 'executive']}><AdminNotificationsPage /></Protected>} />
+      <Route path="/admin/audit" element={<Protected roles={['admin', 'manager']}><AdminAuditPage /></Protected>} />
       <Route path="/admin/content" element={<Protected roles={['admin']}><AdminContentPage /></Protected>} />
       <Route path="/admin/operations/:section" element={<Protected roles={['admin', 'manager']}><AdvancedAdminPageWrapper /></Protected>} />
       <Route path="/admin/operations" element={<Protected roles={['admin', 'manager']}><AdvancedAdminPage /></Protected>} />
