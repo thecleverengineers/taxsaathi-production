@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { effectivePermissions, allowPermissions as permissionMiddleware } from './rbac.mjs';
 
 function jwtSecret() {
   const value = String(process.env.JWT_SECRET || '').trim();
@@ -14,7 +15,7 @@ function bearerToken(request) {
   return request.cookies?.taxsaathi_token || null;
 }
 
-export function publicUser(user, role = null, roles = []) {
+export function publicUser(user, role = null, roles = [], permissions = effectivePermissions(roles)) {
   if (!user) return null;
   return {
     id: user.id,
@@ -28,6 +29,7 @@ export function publicUser(user, role = null, roles = []) {
       ? { id: role.id, name: role.name, slug: role.slug }
       : null,
     roles: roles.map((item) => ({ id: item.id, name: item.name, slug: item.slug })),
+    permissions,
     is_active: user.is_active
   };
 }
@@ -66,7 +68,7 @@ export function authRequired(store) {
         if (role) roles.push(role);
       }
       const role = roles.find((item) => Number(item.id) === Number(user.role_id)) || roles[0] || null;
-      request.auth = { user, role, roles, payload };
+      request.auth = { user, role, roles, permissions: effectivePermissions(roles), payload };
       return next();
     } catch (error) {
       return response.status(401).json({ ok: false, message: 'Your session has expired. Please sign in again.' });
@@ -91,7 +93,7 @@ export function optionalAuth(store) {
           if (role) roles.push(role);
         }
         const role = roles.find((item) => Number(item.id) === Number(user.role_id)) || roles[0] || null;
-        request.auth = { user, role, roles, payload };
+        request.auth = { user, role, roles, permissions: effectivePermissions(roles), payload };
       }
     } catch {
       // Public endpoints should stay public when an old/expired token is present.
@@ -107,6 +109,10 @@ export function allowRoles(...slugs) {
     if (roles.some((role) => accepted.has(String(role.slug || '').toLowerCase()) || String(role.slug || '').toLowerCase() === 'admin')) return next();
     return response.status(403).json({ ok: false, message: 'You do not have permission for this action.' });
   };
+}
+
+export function allowPermissions(...permissions) {
+  return permissionMiddleware(...permissions);
 }
 
 export function roleSlug(auth) {
