@@ -1537,7 +1537,7 @@ router.get('/partner/dashboard', ...roleGuard(request => request.app.locals.stor
 }));
 
 const collectionWhitelist = new Set([
-  'activity_logs', 'activity_notification_reads', 'clients', 'coupon_redemptions', 'coupons', 'customer_details', 'executive_order_payouts', 'executive_payment_profiles', 'executive_salary_payments', 'faqs', 'grow_ranking_keywords', 'grow_ranking_logs', 'grow_ranking_tasks', 'invoices', 'leads', 'notifications', 'notification_logs', 'notification_manager', 'notification_templates', 'notification_user_reads', 'orders', 'order_documents', 'order_workflow_reminder_logs', 'partner_activity_logs', 'partner_client_portal_access', 'partner_coupons', 'partner_coupon_redemptions', 'partner_documents', 'partner_leads', 'partner_messages', 'partner_notifications', 'partner_orders', 'partner_order_documents', 'partner_profiles', 'partner_staff', 'partner_subscriptions', 'partner_subscription_requests', 'partner_tasks', 'payments', 'permission_catalog', 'roles', 'seo_keywords', 'services', 'service_applications', 'service_banners', 'service_benefits', 'service_categories', 'service_requirements', 'service_reviews', 'service_types', 'sidebar_menus', 'support_conversations', 'support_messages', 'tax_rules', 'testimonials', 'users', 'user_push_tokens', 'user_roles', 'website_settings'
+  'activity_logs', 'activity_notification_reads', 'clients', 'coupon_redemptions', 'coupons', 'customer_details', 'executive_order_payouts', 'executive_payment_profiles', 'executive_salary_payments', 'faqs', 'grow_ranking_keywords', 'grow_ranking_logs', 'grow_ranking_tasks', 'invoices', 'leads', 'marketing_campaigns', 'intelligence_models', 'notifications', 'notification_logs', 'notification_manager', 'notification_templates', 'notification_workflows', 'notification_user_reads', 'orders', 'order_documents', 'order_workflow_reminder_logs', 'partner_activity_logs', 'partner_client_portal_access', 'partner_coupons', 'partner_coupon_redemptions', 'partner_documents', 'partner_leads', 'partner_messages', 'partner_notifications', 'partner_orders', 'partner_order_documents', 'partner_profiles', 'partner_staff', 'partner_subscriptions', 'partner_subscription_requests', 'partner_tasks', 'payments', 'permission_catalog', 'roles', 'seo_keywords', 'services', 'service_applications', 'service_banners', 'service_benefits', 'service_categories', 'service_requirements', 'service_reviews', 'service_types', 'sidebar_menus', 'support_conversations', 'support_messages', 'tax_rules', 'testimonials', 'users', 'user_push_tokens', 'user_roles', 'website_settings'
 ]);
 
 const adminOnlyCollections = new Set(['roles', 'user_roles', 'permission_catalog', 'users', 'website_settings']);
@@ -1598,6 +1598,19 @@ router.patch('/admin/collections/:collection/:id', ...roleGuard(request => reque
   const row = await store.update(collection, { id: Number(request.params.id) }, changes);
   if (!row) return responseError(response, 'Record not found.', 404);
   response.json({ ok: true, row: redactCollectionRow(row) });
+}));
+
+router.post('/admin/collections/:collection', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const collection = request.params.collection;
+  if (!collectionWhitelist.has(collection) || adminOnlyCollections.has(collection) && roleSlug(request.auth) !== 'admin') {
+    return responseError(response, 'This collection is not available for creation.', 403);
+  }
+  const changes = pickCollectionChanges(collection, request.body, roleSlug(request.auth));
+  delete changes.updated_at;
+  const row = await store.insert(collection, { ...changes, created_at: request.body.created_at || isoNow(), updated_at: isoNow() });
+  await recordAudit(store, request, { action: 'admin.collection.created', resourceType: collection, resourceId: row.id, newValue: redactCollectionRow(row) });
+  response.status(201).json({ ok: true, row: redactCollectionRow(row) });
 }));
 
 router.delete('/admin/collections/:collection/:id', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
@@ -2037,9 +2050,17 @@ router.get('/admin/leads', ...roleGuard(request => request.app.locals.store, 'ad
 }));
 
 router.patch('/admin/leads/:id', ...roleGuard(request => request.app.locals.store, 'admin', 'manager'), asyncRoute(async (request, response) => {
-  const changes = { status: request.body.status, assigned_to: numericId(request.body.assigned_to), notes: request.body.notes, updated_at: isoNow() };
-  const lead = await request.app.locals.store.update('leads', { id: Number(request.params.id) }, Object.fromEntries(Object.entries(changes).filter(([, value]) => value !== undefined)));
+  const store = request.app.locals.store;
+  const previous = await store.findOne('leads', { id: Number(request.params.id) });
+  if (!previous) return responseError(response, 'Lead not found.', 404);
+  const changes = {};
+  if (request.body.status !== undefined) changes.status = String(request.body.status).trim().toLowerCase();
+  if (request.body.assigned_to !== undefined) changes.assigned_to = numericId(request.body.assigned_to);
+  if (request.body.notes !== undefined) changes.notes = String(request.body.notes);
+  changes.updated_at = isoNow();
+  const lead = await store.update('leads', { id: previous.id }, changes);
   if (!lead) return responseError(response, 'Lead not found.', 404);
+  await recordAudit(store, request, { action: 'lead.workflow.updated', resourceType: 'lead', resourceId: previous.id, previousValue: previous, newValue: lead });
   response.json({ ok: true, lead });
 }));
 
@@ -2171,6 +2192,218 @@ router.post('/partner/subscription/request', ...roleGuard(request => request.app
   const partnerId = Number(request.auth.user.partner_id || request.auth.user.id);
   const row = await request.app.locals.store.insert('partner_subscription_requests', { partner_id: partnerId, plan_name: String(request.body.plan_name || ''), notes: String(request.body.notes || ''), status: 'pending', created_at: isoNow(), updated_at: isoNow() });
   response.status(201).json({ ok: true, request: row });
+}));
+
+// Admin profile workspaces. These endpoints intentionally return operational data only;
+// password hashes, tokens, secrets, and private file paths never leave the server.
+function operationalOutlook({ pending = 0, overdue = 0, completed = 0, total = 0, paid = 0 }) {
+  if (overdue > 0) return { label: 'Needs attention', tone: 'danger', reason: `${overdue} overdue workflow item${overdue === 1 ? '' : 's'}.`, confidence: Math.min(96, 72 + overdue * 4) };
+  if (pending > 0) return { label: 'In progress', tone: 'warning', reason: `${pending} item${pending === 1 ? '' : 's'} still moving through workflow.`, confidence: Math.min(92, 64 + pending * 3) };
+  if (total > 0 && completed / total >= 0.7) return { label: 'Healthy', tone: 'success', reason: `${completed} of ${total} items are complete.`, confidence: 84 };
+  if (paid > 0) return { label: 'Stable', tone: 'info', reason: `${paid} payment record${paid === 1 ? '' : 's'} confirmed.`, confidence: 70 };
+  return { label: 'Insufficient signal', tone: 'neutral', reason: 'More workflow data is needed for a reliable outlook.', confidence: 35 };
+}
+
+async function adminUserDetail(store, id) {
+  const user = await store.findOne('users', { id: Number(id) });
+  if (!user) return null;
+  const [roles, assignments, orders, payments, invoices, documents, notifications, audit, activity, sessions] = await Promise.all([
+    store.find('roles', {}, { sort: { id: 1 } }),
+    store.find('user_roles', { user_id: Number(user.id) }),
+    store.find('orders', {}, { sort: { id: -1 }, limit: 500 }),
+    store.find('payments', {}, { sort: { id: -1 }, limit: 500 }),
+    store.find('invoices', {}, { sort: { id: -1 }, limit: 500 }),
+    user.client_id ? store.find('order_documents', {}, { sort: { id: -1 }, limit: 500 }) : Promise.resolve([]),
+    store.find('notifications', { user_id: Number(user.id) }, { sort: { id: -1 }, limit: 50 }),
+    store.find('audit_logs', { $or: [{ actor_user_id: Number(user.id) }, { resource_type: 'user', resource_id: Number(user.id) }] }, { sort: { id: -1 }, limit: 100 }),
+    store.find('activity_logs', { user_id: Number(user.id) }, { sort: { id: -1 }, limit: 100 }),
+    store.find('sessions', { user_id: Number(user.id) }, { sort: { last_active_at: -1 }, limit: 20 })
+  ]);
+  const roleById = new Map(roles.map((role) => [Number(role.id), role]));
+  const roleRows = assignments.map((row) => roleById.get(Number(row.role_id))).filter(Boolean);
+  const userOrders = orders.filter((row) => Number(row.client_id) === Number(user.client_id) || Number(row.assigned_user_id) === Number(user.id) || Number(row.partner_id) === Number(user.partner_id || user.id));
+  const orderIds = new Set(userOrders.map((row) => Number(row.id)));
+  const userPayments = payments.filter((row) => orderIds.has(Number(row.order_id)) || Number(row.received_by) === Number(user.id));
+  const userInvoices = invoices.filter((row) => orderIds.has(Number(row.order_id)) || Number(row.client_id) === Number(user.client_id));
+  const userDocuments = documents.filter((row) => orderIds.has(Number(row.order_id)) || Number(row.uploaded_by) === Number(user.id));
+  const completed = userOrders.filter((row) => ['completed', 'closed'].includes(String(row.status || '').toLowerCase())).length;
+  const pending = userOrders.filter((row) => !['completed', 'closed', 'cancelled', 'rejected'].includes(String(row.status || '').toLowerCase())).length;
+  return { profile: { ...safeUser(user), role: roleById.get(Number(user.role_id)) || null }, roles: roleRows, available_roles: roles, workflow: { orders: userOrders.slice(0, 100), documents: userDocuments.slice(0, 100), notifications, activity: activity.slice(0, 100) }, payments: userPayments.slice(0, 100), invoices: userInvoices.slice(0, 100), sessions: sessions.map((row) => ({ id: row.id, device: row.device, browser: row.browser, ip_address: row.ip_address, last_active_at: row.last_active_at, created_at: row.created_at, revoked_at: row.revoked_at })), audit: audit.slice(0, 100), outlook: operationalOutlook({ pending, completed, total: userOrders.length, paid: userPayments.filter((row) => ['paid', 'verified', 'success'].includes(String(row.status || '').toLowerCase())).length }) };
+}
+
+router.get('/admin/users/:id', ...permissionGuard(request => request.app.locals.store, 'users.view'), asyncRoute(async (request, response) => {
+  const detail = await adminUserDetail(request.app.locals.store, request.params.id);
+  if (!detail) return responseError(response, 'User not found.', 404);
+  response.json({ ok: true, ...detail });
+}));
+
+router.patch('/admin/users/:id', ...permissionGuard(request => request.app.locals.store, 'users.edit'), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const current = await store.findOne('users', { id: Number(request.params.id) });
+  if (!current) return responseError(response, 'User not found.', 404);
+  const changes = {};
+  for (const field of ['name', 'email', 'phone', 'client_id', 'partner_id']) if (request.body[field] !== undefined) changes[field] = ['name', 'email', 'phone'].includes(field) ? String(request.body[field]).trim() : numericId(request.body[field]);
+  if (request.body.is_active !== undefined) changes.is_active = asBool(request.body.is_active) ? 1 : 0;
+  if (!Object.keys(changes).length) return responseError(response, 'No editable user fields were supplied.', 422);
+  changes.updated_at = isoNow();
+  const updated = await store.update('users', { id: current.id }, changes);
+  await recordAudit(store, request, { action: 'user.profile.updated', resourceType: 'user', resourceId: current.id, previousValue: safeUser(current), newValue: safeUser(updated) });
+  response.json({ ok: true, user: safeUser(updated) });
+}));
+
+router.get('/admin/leads/:id', ...roleGuard(request => request.app.locals.store, 'admin', 'manager'), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const lead = await store.findOne('leads', { id: Number(request.params.id) });
+  if (!lead) return responseError(response, 'Lead not found.', 404);
+  const [applications, conversations, orders, users, audit] = await Promise.all([
+    store.find('service_applications', { $or: [{ email: lead.email }, { mobile: lead.phone }] }, { sort: { id: -1 }, limit: 50 }),
+    store.find('support_conversations', { $or: [{ requester_email: lead.email }, { requester_phone: lead.phone }] }, { sort: { id: -1 }, limit: 50 }),
+    store.find('orders', {}, { sort: { id: -1 }, limit: 500 }),
+    store.find('users', {}, { sort: { id: -1 } }),
+    store.find('audit_logs', { resource_type: 'lead', resource_id: Number(lead.id) }, { sort: { id: -1 }, limit: 100 })
+  ]);
+  const linkedOrders = orders.filter((row) => String(row.customer_mobile || '') === String(lead.phone || '') || String(row.customer_email || '').toLowerCase() === String(lead.email || '').toLowerCase());
+  const assigned = users.find((user) => Number(user.id) === Number(lead.assigned_to));
+  response.json({ ok: true, lead, assigned_user: assigned ? safeUser(assigned) : null, customer: { name: lead.name, email: lead.email, phone: lead.phone, source: lead.source }, inquiry: { service: lead.service, message: lead.message, received_at: lead.created_at }, workflow: { applications, orders: linkedOrders, conversations, audit } });
+}));
+
+async function adminPartnerDetail(store, id) {
+  const partner = (await adminPartnerRecords(store)).find((row) => Number(row.id) === Number(id));
+  if (!partner) return null;
+  const keys = [...partnerIdentityKeys(partner.user)].map(Number);
+  const [activity, tasks, subscriptions, subscriptionRequests, payments, invoices] = await Promise.all([
+    store.find('partner_activity_logs', { partner_id: { $in: keys } }, { sort: { id: -1 }, limit: 100 }),
+    store.find('partner_tasks', { partner_id: { $in: keys } }, { sort: { id: -1 }, limit: 100 }),
+    store.find('partner_subscriptions', { partner_id: { $in: keys } }, { sort: { id: -1 }, limit: 20 }),
+    store.find('partner_subscription_requests', { partner_id: { $in: keys } }, { sort: { id: -1 }, limit: 20 }),
+    store.find('payments', { partner_id: { $in: keys } }, { sort: { id: -1 }, limit: 100 }),
+    store.find('invoices', { partner_id: { $in: keys } }, { sort: { id: -1 }, limit: 100 })
+  ]);
+  const total = partner.orders.length;
+  const completed = partner.orders.filter((row) => ['completed', 'approved'].includes(String(row.order_status || row.status || '').toLowerCase())).length;
+  const pending = total - completed;
+  const paid = partner.orders.filter((row) => ['paid', 'approved', 'verified'].includes(String(row.payment_status || '').toLowerCase())).length;
+  return { ...partner, workflow: { activity, tasks, subscriptions, subscription_requests }, payments, invoices, outlook: operationalOutlook({ pending, completed, total, paid }) };
+}
+
+router.get('/admin/partners/:id/workspace', ...roleGuard(request => request.app.locals.store, 'admin', 'manager'), asyncRoute(async (request, response) => {
+  const partner = await adminPartnerDetail(request.app.locals.store, request.params.id);
+  if (!partner) return responseError(response, 'Partner user not found.', 404);
+  response.json({ ok: true, partner });
+}));
+
+async function adminExecutiveRecords(store) {
+  const [users, roles, assignments, orders, payouts, paymentProfiles, salaries] = await Promise.all([
+    store.find('users', {}, { sort: { id: -1 } }), store.find('roles', {}), store.find('user_roles', {}), store.find('orders', {}, { sort: { id: -1 } }), store.find('executive_order_payouts', {}, { sort: { id: -1 } }), store.find('executive_payment_profiles', {}, { sort: { id: -1 } }), store.find('executive_salary_payments', {}, { sort: { id: -1 } })
+  ]);
+  const roleById = new Map(roles.map((role) => [Number(role.id), role]));
+  const executiveRoleIds = new Set(roles.filter((role) => String(role.slug || '').toLowerCase() === 'executive' || String(role.name || '').toLowerCase() === 'executive').map((role) => Number(role.id)));
+  const executiveIds = new Set(assignments.filter((row) => executiveRoleIds.has(Number(row.role_id))).map((row) => Number(row.user_id)));
+  users.filter((user) => executiveRoleIds.has(Number(user.role_id))).forEach((user) => executiveIds.add(Number(user.id)));
+  return users.filter((user) => executiveIds.has(Number(user.id))).map((user) => {
+    const ownOrders = orders.filter((row) => Number(row.assigned_user_id) === Number(user.id));
+    const ownPayouts = payouts.filter((row) => Number(row.executive_user_id) === Number(user.id));
+    const ownSalaries = salaries.filter((row) => Number(row.executive_user_id || row.user_id) === Number(user.id));
+    const completed = ownOrders.filter((row) => ['completed', 'closed'].includes(String(row.status || '').toLowerCase())).length;
+    const pending = ownOrders.filter((row) => !['completed', 'closed', 'cancelled', 'rejected'].includes(String(row.status || '').toLowerCase())).length;
+    const overdue = ownOrders.filter((row) => ['overdue', 'at_risk'].includes(String(row.sla_status || '').toLowerCase())).length;
+    return { id: Number(user.id), user: { ...safeUser(user), role: roleById.get(Number(user.role_id)) || null }, orders: ownOrders.slice(0, 100), payouts: ownPayouts, salary: ownSalaries, payment_profile: paymentProfiles.find((row) => Number(row.executive_user_id || row.user_id) === Number(user.id)) || null, stats: { total: ownOrders.length, completed, pending, overdue, payout_total: ownPayouts.reduce((sum, row) => sum + asNumber(row.amount), 0), salary_total: ownSalaries.reduce((sum, row) => sum + asNumber(row.amount || row.net_amount), 0) }, outlook: operationalOutlook({ pending, overdue, completed, total: ownOrders.length, paid: ownPayouts.filter((row) => String(row.status || '').toLowerCase() === 'paid').length }) };
+  });
+}
+
+router.get('/admin/executives', ...roleGuard(request => request.app.locals.store, 'admin', 'manager'), asyncRoute(async (request, response) => {
+  const executives = await adminExecutiveRecords(request.app.locals.store);
+  response.json({ ok: true, executives, total: executives.length });
+}));
+
+router.get('/admin/executives/:id', ...roleGuard(request => request.app.locals.store, 'admin', 'manager'), asyncRoute(async (request, response) => {
+  const executive = (await adminExecutiveRecords(request.app.locals.store)).find((row) => Number(row.id) === Number(request.params.id));
+  if (!executive) return responseError(response, 'Executive not found.', 404);
+  const [activity, audit] = await Promise.all([request.app.locals.store.find('activity_logs', { user_id: Number(executive.id) }, { sort: { id: -1 }, limit: 100 }), request.app.locals.store.find('audit_logs', { $or: [{ actor_user_id: Number(executive.id) }, { resource_type: 'user', resource_id: Number(executive.id) }] }, { sort: { id: -1 }, limit: 100 })]);
+  response.json({ ok: true, executive: { ...executive, workflow: { activity, audit } } });
+}));
+
+router.get('/admin/notification-workflows', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const [templates, workflows] = await Promise.all([store.find('notification_templates', {}, { sort: { id: 1 } }), store.find('notification_workflows', {}, { sort: { id: -1 } })]);
+  response.json({ ok: true, templates, workflows });
+}));
+
+router.post('/admin/notification-workflows', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  const name = String(request.body.name || request.body.label || '').trim();
+  const eventKey = String(request.body.event_key || '').trim();
+  if (!name || !eventKey) return responseError(response, 'Workflow name and event key are required.', 422);
+  const row = await request.app.locals.store.insert('notification_workflows', { name, event_key: eventKey, channels: Array.isArray(request.body.channels) ? request.body.channels : ['in_app'], audience_roles: Array.isArray(request.body.audience_roles) ? request.body.audience_roles : [], priority: String(request.body.priority || 'normal'), voice_enabled: asBool(request.body.voice_enabled) ? 1 : 0, voice_provider: String(request.body.voice_provider || 'browser_speech'), voice_script: String(request.body.voice_script || ''), status: String(request.body.status || 'active'), conditions: request.body.conditions || {}, created_by: request.auth.user.id, created_at: isoNow(), updated_at: isoNow() });
+  await recordAudit(request.app.locals.store, request, { action: 'notification.workflow.created', resourceType: 'notification_workflow', resourceId: row.id, newValue: row });
+  response.status(201).json({ ok: true, workflow: row });
+}));
+
+router.patch('/admin/notification-workflows/:id', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  const changes = {};
+  for (const field of ['name', 'event_key', 'priority', 'voice_provider', 'voice_script', 'status']) if (request.body[field] !== undefined) changes[field] = String(request.body[field]);
+  if (request.body.voice_enabled !== undefined) changes.voice_enabled = asBool(request.body.voice_enabled) ? 1 : 0;
+  for (const field of ['channels', 'audience_roles', 'conditions']) if (request.body[field] !== undefined) changes[field] = request.body[field];
+  changes.updated_at = isoNow();
+  const row = await request.app.locals.store.update('notification_workflows', { id: Number(request.params.id) }, changes);
+  if (!row) return responseError(response, 'Notification workflow not found.', 404);
+  await recordAudit(request.app.locals.store, request, { action: 'notification.workflow.updated', resourceType: 'notification_workflow', resourceId: row.id, newValue: row });
+  response.json({ ok: true, workflow: row });
+}));
+
+router.get('/admin/management/overview', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  const collections = await request.app.locals.store.stats();
+  response.json({ ok: true, collections: Object.entries(collections).filter(([name]) => collectionWhitelist.has(name)).map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name)), protected_collections: [...adminOnlyCollections] });
+}));
+
+router.get('/admin/marketing/overview', ...roleGuard(request => request.app.locals.store, 'admin', 'manager'), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const [keywords, tasks, campaigns, leads, applications, settings] = await Promise.all([store.find('grow_ranking_keywords', {}, { sort: { id: -1 }, limit: 500 }), store.find('grow_ranking_tasks', {}, { sort: { due_date: 1, id: -1 }, limit: 500 }), store.find('marketing_campaigns', {}, { sort: { id: -1 }, limit: 100 }), store.find('leads', {}, { sort: { id: -1 }, limit: 500 }), store.find('service_applications', {}, { sort: { id: -1 }, limit: 500 }), store.find('website_settings', {}, { sort: { id: 1 } })]);
+  const convertedLeads = leads.filter((row) => ['converted', 'closed'].includes(String(row.status || '').toLowerCase())).length;
+  response.json({ ok: true, keywords, tasks, campaigns, settings: settings.filter((row) => /seo|meta|og|canonical|robots|marketing/i.test(String(row.setting_key))), funnel: { leads: leads.length, applications: applications.length, converted_leads: convertedLeads, conversion_rate: leads.length ? Math.round(convertedLeads / leads.length * 100) : 0 } });
+}));
+
+router.post('/admin/marketing/campaigns', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  const name = String(request.body.name || '').trim();
+  if (!name) return responseError(response, 'Campaign name is required.', 422);
+  const row = await request.app.locals.store.insert('marketing_campaigns', { name, channel: String(request.body.channel || 'organic'), objective: String(request.body.objective || ''), budget: asNumber(request.body.budget), status: String(request.body.status || 'draft'), landing_path: String(request.body.landing_path || ''), utm_source: String(request.body.utm_source || ''), utm_medium: String(request.body.utm_medium || ''), utm_campaign: String(request.body.utm_campaign || ''), notes: String(request.body.notes || ''), created_by: request.auth.user.id, created_at: isoNow(), updated_at: isoNow() });
+  await recordAudit(request.app.locals.store, request, { action: 'marketing.campaign.created', resourceType: 'marketing_campaign', resourceId: row.id, newValue: row });
+  response.status(201).json({ ok: true, campaign: row });
+}));
+
+router.patch('/admin/marketing/campaigns/:id', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  const changes = {};
+  for (const field of ['name', 'channel', 'objective', 'status', 'landing_path', 'utm_source', 'utm_medium', 'utm_campaign', 'notes']) if (request.body[field] !== undefined) changes[field] = String(request.body[field]);
+  if (request.body.budget !== undefined) changes.budget = asNumber(request.body.budget);
+  changes.updated_at = isoNow();
+  const row = await request.app.locals.store.update('marketing_campaigns', { id: Number(request.params.id) }, changes);
+  if (!row) return responseError(response, 'Campaign not found.', 404);
+  response.json({ ok: true, campaign: row });
+}));
+
+router.get('/admin/intelligence/overview', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const [models, users, leads, orders, notifications, audit] = await Promise.all([store.find('intelligence_models', {}, { sort: { id: -1 }}), store.find('users', {}, { limit: 1000 }), store.find('leads', {}, { limit: 1000 }), store.find('orders', {}, { limit: 1000 }), store.find('notifications', {}, { sort: { id: -1 }, limit: 1000 }), store.find('audit_logs', {}, { sort: { id: -1 }, limit: 1000 })]);
+  const convertedLeads = leads.filter((row) => ['converted', 'closed'].includes(String(row.status || '').toLowerCase())).length;
+  const completedOrders = orders.filter((row) => ['completed', 'closed'].includes(String(row.status || '').toLowerCase())).length;
+  response.json({ ok: true, models, metrics: { data_records: users.length + leads.length + orders.length, lead_conversion_rate: leads.length ? Math.round(convertedLeads / leads.length * 100) : 0, order_completion_rate: orders.length ? Math.round(completedOrders / orders.length * 100) : 0, notification_delivery_records: notifications.filter((row) => row.delivered_at || row.is_read).length, audit_events: audit.length }, safeguards: ['Server-side authorization is required.', 'AI output is advisory and source-linked.', 'Human approval is required for official filings, payments, and legal responses.', 'No quantum or deep-learning result is presented without a configured model/provider.'] });
+}));
+
+router.post('/admin/intelligence/models', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  const name = String(request.body.name || '').trim();
+  if (!name) return responseError(response, 'Model name is required.', 422);
+  const row = await request.app.locals.store.insert('intelligence_models', { name, domain: String(request.body.domain || 'operations'), paradigm: String(request.body.paradigm || 'statistical'), provider: String(request.body.provider || 'not_configured'), version: String(request.body.version || '0.1'), status: String(request.body.status || 'planned'), confidence_threshold: asNumber(request.body.confidence_threshold, 0.8), data_source: String(request.body.data_source || ''), human_review_required: 1, created_by: request.auth.user.id, created_at: isoNow(), updated_at: isoNow() });
+  await recordAudit(request.app.locals.store, request, { action: 'intelligence.model.created', resourceType: 'intelligence_model', resourceId: row.id, newValue: row });
+  response.status(201).json({ ok: true, model: row });
+}));
+
+router.patch('/admin/intelligence/models/:id', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  const changes = {};
+  for (const field of ['name', 'domain', 'paradigm', 'provider', 'version', 'status', 'data_source']) if (request.body[field] !== undefined) changes[field] = String(request.body[field]);
+  if (request.body.confidence_threshold !== undefined) changes.confidence_threshold = asNumber(request.body.confidence_threshold);
+  changes.updated_at = isoNow();
+  const row = await request.app.locals.store.update('intelligence_models', { id: Number(request.params.id) }, changes);
+  if (!row) return responseError(response, 'Intelligence model not found.', 404);
+  response.json({ ok: true, model: row });
 }));
 
 export default router;
