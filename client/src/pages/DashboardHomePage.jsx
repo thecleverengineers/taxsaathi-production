@@ -28,6 +28,10 @@ function DashboardKpi({ stat, index }) {
   </article>;
 }
 
+function AdminCommandMetric({ metric }) {
+  return <Link className="dashboard-command-metric" to={metric.to}><span className="dashboard-command-icon"><Icon name={metric.icon} size={15} /></span><span><small>{metric.label}</small><strong>{metric.value}</strong><em>{metric.note}</em></span><Icon name="arrow" size={13} /></Link>;
+}
+
 export default function DashboardHomePage() {
   const { user } = useAuth();
   const [data, setData] = useState(null);
@@ -104,6 +108,16 @@ export default function DashboardHomePage() {
   const revenueValue = reports ? money(reportSummary.revenue) : (data.stats?.find((stat) => /value/i.test(stat.label))?.value || '—');
   const activeServices = data.stats?.find((stat) => /service/i.test(stat.label))?.value || '—';
   const paidValue = data.stats?.find((stat) => /paid/i.test(stat.label))?.value || '—';
+  const commandMetrics = data.adminMetrics ? [
+    { label: 'Active users', value: data.adminMetrics.active_users, note: `${data.adminMetrics.total_users} total`, icon: 'users', to: '/admin/users' },
+    { label: 'Corporate accounts', value: data.adminMetrics.corporate_accounts, note: 'Customer organizations', icon: 'briefcase', to: '/admin/partners' },
+    { label: 'Active cases', value: data.adminMetrics.active_cases, note: `${data.adminMetrics.completed_cases} completed`, icon: 'orders', to: '/admin/orders' },
+    { label: 'SLA-risk cases', value: data.adminMetrics.sla_risk_cases, note: 'Needs attention', icon: 'activity', to: '/admin/orders' },
+    { label: 'Documents to verify', value: data.adminMetrics.documents_awaiting_verification, note: 'Review queue', icon: 'file', to: '/admin/orders' },
+    { label: 'Payments pending', value: data.adminMetrics.payments_pending, note: `${data.adminMetrics.outstanding_invoices} invoices open`, icon: 'wallet', to: '/admin/reports' },
+    { label: 'Security alerts', value: data.adminMetrics.security_alerts, note: `${data.adminMetrics.audit_events} audit events`, icon: 'shield', to: '/admin/audit' },
+    { label: 'Subscriptions active', value: data.adminMetrics.active_subscriptions, note: `${data.adminMetrics.subscriptions_expiring} expiring soon`, icon: 'trending', to: '/admin/reports' }
+  ] : [];
 
   return (
     <div className="workspace-page reference-dashboard-page">
@@ -130,6 +144,8 @@ export default function DashboardHomePage() {
           {scope.actions.map(([label, to, icon]) => <Link className="dashboard-quick-action" to={to} key={to}><span><Icon name={icon} size={17} /></span><strong>{label}</strong><Icon name="arrow" size={13} /></Link>)}
         </div>
       </section>
+
+      {commandMetrics.length ? <section className="dashboard-command-center"><div className="dashboard-command-heading"><div><span className="dashboard-overline">Admin command center</span><h3>Operational control room</h3><p>Drill into the live queues that need attention.</p></div><Link className="dashboard-panel-link" to="/admin/reports">View performance <Icon name="arrow" size={13} /></Link></div><div className="dashboard-command-grid">{commandMetrics.map((metric) => <AdminCommandMetric key={metric.label} metric={metric} />)}</div></section> : null}
 
       <div className="dashboard-chart-grid">
         <section className="dashboard-reference-panel dashboard-donut-panel">
