@@ -17,9 +17,23 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 const clientDist = path.resolve(projectRoot, 'client/dist');
 const clientIndexPath = path.join(clientDist, 'index.html');
-const clientIndex = fs.existsSync(clientIndexPath)
-  ? fs.readFileSync(clientIndexPath, 'utf8').replace('<script type="module" crossorigin', '<script data-cfasync="false" crossorigin')
-  : null;
+function prepareClientIndex(index) {
+  const entry = index.match(/<script type="module" crossorigin src="([^"]+)"><\/script>/)?.[1];
+  if (!entry) return index;
+  const bootstrap = `<script data-cfasync="false">
+    (() => {
+      const loadApplication = () => import(${JSON.stringify(entry)}).catch((error) => console.error('TaxSaathi bootstrap failed.', error));
+      if (!('serviceWorker' in navigator)) return loadApplication();
+      navigator.serviceWorker.getRegistrations().then(async (registrations) => {
+        if (!registrations.length) return loadApplication();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+        window.location.reload();
+      }).catch(loadApplication);
+    })();
+  </script>`;
+  return index.replace(/<script type="module" crossorigin src="[^"]+"><\/script>/, bootstrap);
+}
+const clientIndex = fs.existsSync(clientIndexPath) ? prepareClientIndex(fs.readFileSync(clientIndexPath, 'utf8')) : null;
 const legacyPublic = path.resolve(projectRoot, 'legacy/taxsaathi/public');
 const legacyStorage = path.resolve(projectRoot, 'legacy/taxsaathi/storage');
 const port = Number(process.env.PORT || 4001);
