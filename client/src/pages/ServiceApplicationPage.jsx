@@ -43,7 +43,6 @@ export default function ServiceApplicationPage() {
     email: draft.email || user?.email || ''
   });
   const [additionalNotes, setAdditionalNotes] = useState(draft.additional_notes || '');
-  const [paymentMethod, setPaymentMethod] = useState(draft.payment_method || 'upi');
   const [selectedRequirement, setSelectedRequirement] = useState('');
   const [documents, setDocuments] = useState([]);
   const [message, setMessage] = useState('');
@@ -83,7 +82,7 @@ export default function ServiceApplicationPage() {
   }
 
   function saveDraft() {
-    sessionStorage.setItem(draftKey, JSON.stringify({ ...form, additional_notes: additionalNotes, payment_method: paymentMethod }));
+    sessionStorage.setItem(draftKey, JSON.stringify({ ...form, additional_notes: additionalNotes }));
   }
 
   function goToAuth(path = '/auth') {
@@ -138,8 +137,9 @@ export default function ServiceApplicationPage() {
       goToAuth();
       return;
     }
-    if (!['client', 'admin', 'manager'].includes(String(user.role?.slug || '').toLowerCase())) {
-      feedback('Only a client account can submit a new service order.');
+    const role = String(user.role?.slug || '').toLowerCase();
+    if (!['client', 'admin', 'manager', 'partner', 'partners'].includes(role)) {
+      feedback('Sign in with a client or partner account to submit a service job.');
       return;
     }
     const missing = requiredRequirements.filter((requirement) => !attachedFor(requirement.id).length);
@@ -161,7 +161,6 @@ export default function ServiceApplicationPage() {
         body: {
           service_id: service.id,
           financial_year: '2026-27',
-          payment_method: paymentMethod,
           notes: [contactNotes, additionalNotes.trim()].filter(Boolean).join('\n\n'),
           customer_name: form.customer_name.trim(),
           pan_number: form.pan_number.trim().toUpperCase(),
@@ -179,9 +178,10 @@ export default function ServiceApplicationPage() {
         await api(`/orders/${orderId}/documents`, { method: 'POST', body });
       }
       sessionStorage.removeItem(draftKey);
-      navigate(`/client/orders/${orderId}`, {
+      const isPartner = ['partner', 'partners'].includes(String(user.role?.slug || '').toLowerCase());
+      navigate(isPartner ? `/partner/jobs/${orderId}` : `/client/orders/${orderId}`, {
         replace: true,
-        state: { message: `${result.order.order_no || 'Your order'} was submitted. Continue with the payment instructions in your order workspace.` }
+        state: { message: `${result.order.order_no || 'Your job'} was submitted. The admin will assign it, and payment will be available after the completed work is uploaded.` }
       });
     } catch (error) {
       feedback(error.message);
@@ -194,7 +194,7 @@ export default function ServiceApplicationPage() {
     <div className="container-wide">
       <div className="application-back-row">
         <Link to={`/services/${service.slug}`}><Icon name="chevronLeft" size={14} /> Back to service</Link>
-        <span>Application · Step 1 of 2</span>
+        <span>Application · Job request</span>
       </div>
       {!user && <div className="application-login-note"><Icon name="shield" size={16} /><span>Already have an account? <button type="button" onClick={() => goToAuth()}>Log in</button> or <button type="button" onClick={() => goToAuth('/register')}>sign up</button> to submit without losing your details.</span></div>}
       <div className="application-layout">
@@ -224,18 +224,14 @@ export default function ServiceApplicationPage() {
         <form className="application-form-card" onSubmit={submitOrder}>
           <div className="application-form-head">
             <span className="application-step">STEP 1</span>
-            <h1>Submit order details</h1>
+            <h1>Submit job details</h1>
             <p>Upload all required documents and submit your order. If you are not logged in, you can log in or sign up here without losing the form.</p>
           </div>
           {message && <div className={`form-message ${messageType}`}>{message}</div>}
 
           <section className="application-section">
-            <div className="application-section-heading"><span>Payment Method</span><small>Step 2 will confirm the payment instructions.</small></div>
-            <select className="application-control" value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>
-              <option value="upi">UPI</option>
-              <option value="manual">Manual payment</option>
-            </select>
-            <div className="application-payment-note"><strong>Payment method will be confirmed in Step 2.</strong><span>After this form is submitted, your order will be created first. Follow the instructions for your selected method.</span></div>
+            <div className="application-section-heading"><span>How payment works</span><small>No payment is required at job submission.</small></div>
+            <div className="application-payment-note"><strong>Pay after the work is submitted.</strong><span>Once the assigned staff member uploads the completed work, submit your UPI transaction ID and payment proof, or choose “Pay later.” The admin reviews the payment choice and deliverable before release.</span></div>
           </section>
 
           <section className="application-section">
@@ -265,8 +261,8 @@ export default function ServiceApplicationPage() {
             </div>
           </section>
 
-          <button className="button primary full application-submit-button" type="submit" disabled={submitting}>{submitting ? <><span className="spinner" />Submitting order…</> : <>Submit Order &amp; Continue to Payment <Icon name="arrow" size={16} /></>}</button>
-          <small className="application-footnote">Your order will appear in your client workspace after submission. You can add more documents later if requested by the service team.</small>
+          <button className="button primary full application-submit-button" type="submit" disabled={submitting}>{submitting ? <><span className="spinner" />Submitting order…</> : <>Submit Job Request <Icon name="arrow" size={16} /></>}</button>
+          <small className="application-footnote">Your job will appear in your client or partner workspace after submission. You can add documents later if requested by the assigned staff member.</small>
         </form>
       </div>
     </div>

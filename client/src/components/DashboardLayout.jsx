@@ -24,11 +24,28 @@ export default function DashboardLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [sidebar, setSidebar] = useState(false);
+  const [premiumMode, setPremiumMode] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [site, setSite] = useState({ site_name: 'TaxSaathi', site_logo: '' });
   const role = user?.role?.slug || 'client';
   const navItems = useMemo(() => nav[role] || nav.client, [role]);
+  const premiumStorageKey = user?.id ? `taxsaathi:premium-mode:${user.id}` : '';
+
+  useEffect(() => {
+    if (!premiumStorageKey) { setPremiumMode(false); return; }
+    try { setPremiumMode(window.localStorage.getItem(premiumStorageKey) === 'on'); }
+    catch { setPremiumMode(false); }
+  }, [premiumStorageKey]);
+
+  function togglePremiumMode() {
+    if (!premiumStorageKey) return;
+    setPremiumMode((current) => {
+      const next = !current;
+      try { window.localStorage.setItem(premiumStorageKey, next ? 'on' : 'off'); } catch {}
+      return next;
+    });
+  }
   const unread = notifications.filter((item) => !item.is_read).length;
 
   useEffect(() => {
@@ -58,12 +75,23 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div className="dashboard-app">
+    <div className={'dashboard-app' + (premiumMode ? ' premium-mode' : '')}>
       <div className={`sidebar-backdrop ${sidebar ? 'show' : ''}`} onClick={() => setSidebar(false)} />
       <aside className={`dashboard-sidebar ${sidebar ? 'open' : ''}`}>
         <div className="sidebar-top"><Link className="sidebar-brand" to="/dashboard"><span className="sidebar-logo"><img src={assetUrl(site.site_logo)} alt="" /></span><span><strong>{site.site_name}</strong><small>{user?.role?.name || 'Workspace'}</small></span></Link><button className="icon-button mobile-only" onClick={() => setSidebar(false)}><Icon name="close" /></button></div>
         <div className="sidebar-section-label">Workspace</div>
         <nav className="sidebar-nav">{navItems.map(([label, path, icon]) => <NavLink key={path} to={path} className={isActive(path) ? 'active' : ''} onClick={() => setSidebar(false)}><span className="nav-icon"><Icon name={icon} size={17} /></span><span>{label}</span>{isActive(path) && <b />}</NavLink>)}</nav>
+        <section className={'sidebar-premium-card' + (premiumMode ? ' enabled' : '')} aria-label="Premium appearance">
+          <div className="sidebar-premium-row">
+            <span className="sidebar-premium-icon"><Icon name="sparkles" size={16} /></span>
+            <span className="sidebar-premium-copy">
+              <strong>Premium mode</strong>
+              <small>{premiumMode ? 'Premium style enabled' : 'Standard workspace style'}</small>
+            </span>
+            <button className="sidebar-premium-switch" type="button" role="switch" aria-checked={premiumMode} aria-label={premiumMode ? 'Turn off premium appearance' : 'Turn on premium appearance'} onClick={togglePremiumMode}><span /></button>
+          </div>
+          <p>Changes the workspace appearance on this device.</p>
+        </section>
         <button className="sidebar-logout" onClick={logout}><Icon name="logout" size={17} /> Sign out</button>
       </aside>
       <div className="dashboard-main">

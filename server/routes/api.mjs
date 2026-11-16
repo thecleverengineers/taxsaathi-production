@@ -545,6 +545,15 @@ async function scopedOrder(store, request, id) {
   });
 }
 
+function ownsOrder(order, auth) {
+  const role = roleSlug(auth);
+  const user = auth?.user || {};
+  if (Number(order?.submitted_by_user_id) === Number(user.id)) return true;
+  if (role === 'client') return Number(order?.client_id) === Number(user.client_id || 0);
+  if (['partner', 'partners'].includes(role)) return Number(order?.partner_id) === Number(user.partner_id || user.id);
+  return false;
+}
+
 async function getDashboard(store, request) {
   const role = roleSlug(request.auth);
   const filter = allowedOrderFilter(request.auth);
@@ -597,7 +606,7 @@ async function getDashboard(store, request) {
     user: await currentUserResponse(store, request.auth.user),
     stats: scopedStats,
     statusSummary,
-    recentOrders: await Promise.all(orders.slice(0, 8).map((order) => resolveOrder(store, order))),
+    recentOrders: await Promise.all(orders.slice(0, 8).map((order) => resolveOrder(store, order, request.auth))),
     notifications: (await notificationRows(store, request.auth.user.id, 8, request.auth)).slice(0, 8),
     adminMetrics: isGlobalRole(request.auth) ? await getCommandCenterMetrics(store) : null,
     dataMode: store.mode
@@ -981,14 +990,14 @@ router.get('/orders', authRequired((request) => request.app.locals.store), async
   const status = String(request.query.status || '').trim();
   if (status) filter.status = status;
   const rows = await store.find('orders', filter, { sort: { id: -1 } });
-  response.json({ ok: true, orders: await Promise.all(rows.map((order) => resolveOrder(store, order))), total: rows.length });
+  response.json({ ok: true, orders: await Promise.all(rows.map((order) => resolveOrder(store, order, request.auth))), total: rows.length });
 }));
 
 router.get('/orders/:id', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
   const order = await scopedOrder(store, request, request.params.id);
   if (!order) return responseError(response, 'Order not found or access is not allowed.', 404);
-  response.json({ ok: true, order: await resolveOrder(store, order) });
+  response.json({ ok: true, order: await resolveOrder(store, order, request.auth) });
 }));
 
 router.get('/orders/:orderId/documents/:documentId', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
@@ -1002,13 +1011,15 @@ router.get('/orders/:orderId/documents/:documentId', authRequired((request) => r
   if (!sent) return responseError(response, 'Document file not found.', 404);
 }));
 
-router.post('/orders', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'client'), asyncRoute(async (request, response) => {
+router.post('/orders', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'client', 'partner', 'partners'), asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
   const serviceId = numericId(request.body.service_id || request.body.service);
   const service = serviceId ? await store.findOne('services', { id: serviceId }) : null;
   if (!service) return responseError(response, 'Choose a valid service.');
+  const submittingRole = roleSlug(request.auth);
+  const isPartnerSubmission = ['partner', 'partners'].includes(submittingRole);
   const clientId = Number(request.auth.user.client_id || 0);
-  if (!clientId) return responseError(response, 'A client profile is required before placing an order.');
+  if (!isPartnerSubmission && !clientId) return responseError(response, 'A client profile is required before placing an order.');
   const fee = asNumber(service.filing_fee);
   const customerName = String(request.body.customer_name || request.auth.user.name || '').trim();
   const customerPan = String(request.body.pan_number || '').trim().toUpperCase();
@@ -1025,7 +1036,10 @@ router.post('/orders', ...roleGuard(request => request.app.locals.store, 'admin'
   const notes = [contactNotes, String(request.body.notes || '').trim()].filter(Boolean).join('\n\n');
   const order = await store.insert('orders', {
     order_no: await nextOrderNo(store),
-    client_id: clientId,
+    client_id: clientId || null,
+    partner_id: isPartnerSubmission ? Number(request.auth.user.partner_id || request.auth.user.id) : null,
+    submitted_by_user_id: Number(request.auth.user.id),
+    submitter_role: submittingRole,
     service_id: serviceId,
     financial_year: request.body.financial_year || latestTaxRule[0]?.financial_year || currentFinancialYear(),
     fee_amount: fee,
@@ -1033,8 +1047,8 @@ router.post('/orders', ...roleGuard(request => request.app.locals.store, 'admin'
     payable_amount: fee,
     coupon_discount_amount: 0,
     status: 'submitted',
-    payment_method: request.body.payment_method || 'manual',
-    payment_status: 'pending',
+    payment_method: 'upi',
+    payment_status: 'not_due',
     notes,
     customer_name: customerName,
     pan_number: customerPan,
@@ -1044,31 +1058,48 @@ router.post('/orders', ...roleGuard(request => request.app.locals.store, 'admin'
     updated_at: isoNow()
   });
   await store.insert('activity_logs', { user_id: request.auth.user.id, order_id: order.id, action: 'order.created', description: `Created order ${order.order_no}`, meta_json: '{}', created_at: isoNow() });
-  await notify(store, { userId: request.auth.user.id, title: 'Order submitted', message: `${order.order_no} is now in review.`, severity: 'success', url: `/client/orders/${order.id}`, orderId: order.id });
-  response.status(201).json({ ok: true, order: await resolveOrder(store, order) });
+  const submitterUrl = isPartnerSubmission ? `/partner/jobs/${order.id}` : `/client/orders/${order.id}`;
+  await notify(store, { userId: request.auth.user.id, title: 'Job submitted', message: `${order.order_no} has been submitted for assignment.`, severity: 'success', url: submitterUrl, orderId: order.id });
+  response.status(201).json({ ok: true, order: await resolveOrder(store, order, request.auth) });
 }));
 
-router.post('/orders/:id/status', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'executive'), asyncRoute(async (request, response) => {
+router.post('/orders/:id/status', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'executive', 'partner', 'partners'), asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
   const order = await scopedOrder(store, request, request.params.id);
   if (!order) return responseError(response, 'Order not found or access is not allowed.', 404);
+  const role = roleSlug(request.auth);
+  const isAdmin = ['admin', 'manager'].includes(role);
+  const isWorker = ['executive', 'partner', 'partners'].includes(role);
+  if (isWorker && Number(order.assigned_user_id) !== Number(request.auth.user.id)) return responseError(response, 'Only the assigned worker can update this job.', 403);
   const nextStatus = String(request.body.status || '').trim();
-  const allowed = ['submitted', 'approved', 'work_in_progress', 'completed', 'rejected', 'cancelled'];
-  if (!allowed.includes(nextStatus)) return responseError(response, 'Unsupported order status.');
-  if (roleSlug(request.auth) === 'executive' && !['work_in_progress', 'completed'].includes(nextStatus)) return responseError(response, 'Executives can update workflow progress only.', 403);
-  const updated = await store.update('orders', { id: Number(order.id) }, { status: nextStatus, updated_at: isoNow(), completed_at: nextStatus === 'completed' ? isoNow() : order.completed_at });
-  await store.insert('activity_logs', { user_id: request.auth.user.id, order_id: order.id, action: 'order.status.updated', description: `Order status changed to ${nextStatus}`, meta_json: JSON.stringify({ status: nextStatus }), created_at: isoNow() });
-  if (order.client_id) await notify(store, { userId: await store.findOne('users', { client_id: Number(order.client_id), role_id: 5 }).then((user) => user?.id || null), title: 'Order status updated', message: `${order.order_no} is now ${statusLabel(nextStatus)}.`, severity: nextStatus === 'completed' ? 'success' : 'info', url: `/client/orders/${order.id}`, orderId: order.id });
-  response.json({ ok: true, order: await resolveOrder(store, updated) });
+  const allowed = isAdmin
+    ? ['submitted', 'work_in_progress', 'rejected', 'cancelled']
+    : ['work_in_progress'];
+  if (!allowed.includes(nextStatus)) return responseError(response, 'Use assignment or deliverable review to move this job to that stage.');
+  if (nextStatus === 'work_in_progress' && !Number(order.assigned_user_id)) return responseError(response, 'Assign this job before work begins.');
+  const updated = await store.update('orders', { id: Number(order.id) }, { status: nextStatus, updated_at: isoNow() });
+  await store.insert('activity_logs', { user_id: request.auth.user.id, order_id: order.id, action: 'order.status.updated', description: `Job status changed to ${nextStatus}`, meta_json: JSON.stringify({ status: nextStatus }), created_at: isoNow() });
+  const notifyId = order.submitted_by_user_id || (order.client_id ? (await store.findOne('users', { client_id: Number(order.client_id), role_id: 5 }))?.id : null);
+  if (notifyId) await notify(store, { userId: notifyId, title: 'Job status updated', message: `${order.order_no} is now ${statusLabel(nextStatus)}.`, severity: 'info', url: order.submitter_role === 'partner' || order.submitter_role === 'partners' ? `/partner/jobs/${order.id}` : `/client/orders/${order.id}`, orderId: order.id });
+  response.json({ ok: true, order: await resolveOrder(store, updated, request.auth) });
 }));
 
 router.post('/orders/:id/approve', ...roleGuard(request => request.app.locals.store, 'admin', 'manager'), asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
   const order = await store.findOne('orders', { id: Number(request.params.id) });
   if (!order) return responseError(response, 'Order not found.', 404);
-  const updated = await store.update('orders', { id: Number(order.id) }, { status: 'approved', approved_by: request.auth.user.id, approved_at: isoNow(), updated_at: isoNow() });
-  await store.insert('activity_logs', { user_id: request.auth.user.id, order_id: order.id, action: 'order.approved', description: `Approved ${order.order_no}`, meta_json: '{}', created_at: isoNow() });
-  response.json({ ok: true, order: await resolveOrder(store, updated) });
+  if (order.status !== 'awaiting_approval') return responseError(response, 'The job must be submitted for review before approval.');
+  const outputs = await store.find('order_documents', { order_id: Number(order.id), source: 'staff', document_status: 'pending_approval' });
+  if (!outputs.length) return responseError(response, 'Submit a deliverable before approving this job.');
+  if (!['verified', 'deferred'].includes(String(order.payment_status || '').toLowerCase())) return responseError(response, 'Verify the payment or record that the customer chose to pay later before approval.');
+  for (const document of outputs) {
+    await store.update('order_documents', { id: document.id }, { is_client_visible: 1, document_status: 'delivered', approved_by: request.auth.user.id, approved_at: isoNow(), updated_at: isoNow() });
+  }
+  const updated = await store.update('orders', { id: Number(order.id) }, { status: 'completed', approved_by: request.auth.user.id, approved_at: isoNow(), completed_at: isoNow(), updated_at: isoNow() });
+  await store.insert('activity_logs', { user_id: request.auth.user.id, order_id: order.id, action: 'order.approved', description: `Approved deliverable for ${order.order_no}`, meta_json: '{}', created_at: isoNow() });
+  const recipient = order.submitted_by_user_id || (order.client_id ? (await store.findOne('users', { client_id: Number(order.client_id), role_id: 5 }))?.id : null);
+  if (recipient) await notify(store, { userId: recipient, title: 'Deliverable approved', message: `The approved deliverable for ${order.order_no} is ready to access.`, severity: 'success', url: order.submitter_role === 'partner' || order.submitter_role === 'partners' ? `/partner/jobs/${order.id}` : `/client/orders/${order.id}`, orderId: order.id });
+  response.json({ ok: true, order: await resolveOrder(store, updated, request.auth) });
 }));
 
 router.post('/orders/:id/assign', ...roleGuard(request => request.app.locals.store, 'admin', 'manager'), asyncRoute(async (request, response) => {
@@ -1076,9 +1107,26 @@ router.post('/orders/:id/assign', ...roleGuard(request => request.app.locals.sto
   const order = await store.findOne('orders', { id: Number(request.params.id) });
   const assignee = await store.findOne('users', { id: Number(request.body.assigned_user_id) });
   if (!order || !assignee) return responseError(response, 'Order or assignee not found.', 404);
-  const updated = await store.update('orders', { id: Number(order.id) }, { assigned_user_id: assignee.id, updated_at: isoNow() });
-  await notify(store, { userId: assignee.id, title: 'Order assigned to you', message: `${order.order_no} has been assigned to your workflow.`, severity: 'info', url: `/orders/${order.id}`, orderId: order.id });
-  response.json({ ok: true, order: await resolveOrder(store, updated) });
+  const assigneeRole = await store.findOne('roles', { id: Number(assignee.role_id) });
+  if (!['executive', 'partner', 'partners'].includes(String(assigneeRole?.slug || '').toLowerCase())) return responseError(response, 'Choose an executive or partner account for assignment.');
+  const updated = await store.update('orders', { id: Number(order.id) }, { assigned_user_id: assignee.id, status: 'assigned', assigned_by: request.auth.user.id, assigned_at: isoNow(), updated_at: isoNow() });
+  const assigneeUrl = ['partner', 'partners'].includes(String(assigneeRole.slug || '').toLowerCase()) ? `/partner/jobs/${order.id}` : `/admin/orders/${order.id}`;
+  await notify(store, { userId: assignee.id, title: 'Job assigned to you', message: `${order.order_no} has been assigned to your workflow.`, severity: 'info', url: assigneeUrl, orderId: order.id });
+  response.json({ ok: true, order: await resolveOrder(store, updated, request.auth) });
+}));
+
+router.get('/admin/assignees', ...roleGuard(request => request.app.locals.store, 'admin', 'manager'), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const roles = await store.find('roles', {});
+  const roleById = new Map(roles.map((role) => [Number(role.id), role]));
+  const users = await store.find('users', {}, { sort: { name: 1, id: 1 } });
+  const assignees = users
+    .filter((user) => {
+      const slug = String(roleById.get(Number(user.role_id))?.slug || '').toLowerCase();
+      return ['executive', 'partner', 'partners'].includes(slug) && user.is_active !== 0 && user.is_active !== '0';
+    })
+    .map((user) => ({ ...safeUser(user), role: roleById.get(Number(user.role_id))?.slug || '' }));
+  response.json({ ok: true, assignees });
 }));
 
 router.post('/orders/:id/coupon', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'client'), asyncRoute(async (request, response) => {
@@ -1089,7 +1137,7 @@ router.post('/orders/:id/coupon', ...roleGuard(request => request.app.locals.sto
   const code = String(request.body.code || '').trim().toUpperCase();
   if (!code) return responseError(response, 'Enter a coupon code.');
   if (order.coupon_code) {
-    if (String(order.coupon_code).toUpperCase() === code) return response.json({ ok: true, order: await resolveOrder(store, order), message: 'This coupon is already applied.' });
+    if (String(order.coupon_code).toUpperCase() === code) return response.json({ ok: true, order: await resolveOrder(store, order, request.auth), message: 'This coupon is already applied.' });
     return responseError(response, 'Only one coupon can be applied to an order.');
   }
   const result = await validateCoupon(store, { code, serviceId: order.service_id, amount: order.gross_fee_amount || order.fee_amount, auth: request.auth });
@@ -1114,13 +1162,15 @@ router.post('/orders/:id/coupon', ...roleGuard(request => request.app.locals.sto
     discount_amount: result.discount,
     created_at: isoNow()
   });
-  response.json({ ok: true, message: `${result.coupon.code} applied successfully.`, order: await resolveOrder(store, updated) });
+  response.json({ ok: true, message: `${result.coupon.code} applied successfully.`, order: await resolveOrder(store, updated, request.auth) });
 }));
 
-router.post('/orders/:id/payment-proof', authRequired((request) => request.app.locals.store), paymentProofUpload.single('file'), asyncRoute(async (request, response) => {
+router.post('/orders/:id/payment-proof', ...roleGuard(request => request.app.locals.store, 'client', 'partner', 'partners'), paymentProofUpload.single('file'), asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
   const order = await scopedOrder(store, request, request.params.id);
   if (!order) return responseError(response, 'Order not found or access is not allowed.', 404);
+  if (!ownsOrder(order, request.auth)) return responseError(response, 'Only the job owner can submit payment proof.', 403);
+  if (order.status !== 'awaiting_approval') return responseError(response, 'Payment can be submitted after the staff member uploads the completed work.');
   if (!request.file) return responseError(response, 'Payment screenshot is required.');
   const transactionId = String(request.body.transaction_id || request.body.reference_no || '').trim();
   if (!transactionId) return responseError(response, 'Transaction ID is required.');
@@ -1157,7 +1207,33 @@ router.post('/orders/:id/payment-proof', authRequired((request) => request.app.l
     updated_at: isoNow()
   });
   await notify(store, { userId: null, title: 'Payment proof submitted', message: `${order.order_no} is ready for payment verification.`, severity: 'info', url: `/admin/orders/${order.id}`, orderId: order.id });
-  response.status(201).json({ ok: true, message: 'Payment proof submitted for verification.', order: await resolveOrder(store, updated) });
+  response.status(201).json({ ok: true, message: 'Payment proof submitted for verification.', order: await resolveOrder(store, updated, request.auth) });
+}));
+
+router.post('/orders/:id/pay-later', ...roleGuard(request => request.app.locals.store, 'client', 'partner', 'partners'), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const order = await scopedOrder(store, request, request.params.id);
+  if (!order) return responseError(response, 'Order not found or access is not allowed.', 404);
+  if (!ownsOrder(order, request.auth)) return responseError(response, 'Only the job owner can choose payment later.', 403);
+  if (order.status !== 'awaiting_approval') return responseError(response, 'Choose pay later after the staff member submits the completed work.');
+  if (['verified', 'paid'].includes(String(order.payment_status || '').toLowerCase())) return responseError(response, 'Payment has already been verified.');
+  if (String(order.payment_status || '').toLowerCase() === 'pending_review') return responseError(response, 'Your payment proof is already under review.');
+  const amount = asNumber(order.payable_amount || order.fee_amount);
+  let invoice = await store.findOne('invoices', { order_id: order.id });
+  if (!invoice) {
+    invoice = await store.insert('invoices', {
+      order_id: order.id, client_id: order.client_id || null, partner_id: order.partner_id || null,
+      invoice_no: `INV-${String(order.id).padStart(5, '0')}`, issue_date: isoNow().slice(0, 10),
+      subtotal: amount, tax_percent: 0, tax_amount: 0, total_amount: amount, paid_amount: 0,
+      status: 'unpaid', notes: 'Customer selected payment later.', created_at: isoNow(), updated_at: isoNow()
+    });
+  } else {
+    invoice = await store.update('invoices', { id: invoice.id }, { status: 'unpaid', paid_amount: 0, notes: 'Customer selected payment later.', updated_at: isoNow() });
+  }
+  const existingDeferred = await store.findOne('payments', { order_id: order.id, status: 'deferred' });
+  if (!existingDeferred) await store.insert('payments', { invoice_id: invoice.id, order_id: order.id, amount, method: 'deferred', status: 'deferred', submitted_by: request.auth.user.id, notes: 'Customer selected payment later.', created_at: isoNow(), updated_at: isoNow() });
+  const updated = await store.update('orders', { id: order.id }, { payment_status: 'deferred', payment_method: 'deferred', updated_at: isoNow() });
+  response.json({ ok: true, message: 'Payment marked for later. The admin can now review the deliverable.', order: await resolveOrder(store, updated, request.auth) });
 }));
 
 router.get('/orders/:id/payment-proof', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
@@ -1171,10 +1247,12 @@ router.get('/orders/:id/payment-proof', authRequired((request) => request.app.lo
   if (!sent) return responseError(response, 'Payment screenshot not found.', 404);
 }));
 
-router.post('/orders/:id/razorpay/order', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'client'), asyncRoute(async (request, response) => {
+router.post('/orders/:id/razorpay/order', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'client', 'partner', 'partners'), asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
   const order = await scopedOrder(store, request, request.params.id);
   if (!order) return responseError(response, 'Order not found or access is not allowed.', 404);
+  if (order.status !== 'awaiting_approval') return responseError(response, 'Online payment is available after the completed work is submitted.');
+  if (!ownsOrder(order, request.auth) && !isStaff(request.auth)) return responseError(response, 'Only the job owner can pay for this job.', 403);
   if (completedPayment(order.payment_status)) return responseError(response, 'This order is already paid.');
   const amount = Math.round(asNumber(order.payable_amount || order.fee_amount) * 100);
   if (amount <= 0) return responseError(response, 'This order does not have a payable amount.');
@@ -1188,9 +1266,11 @@ router.post('/orders/:id/razorpay/order', ...roleGuard(request => request.app.lo
   }
 }));
 
-router.post('/orders/:id/razorpay/verify', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'client'), asyncRoute(async (request, response) => {
+router.post('/orders/:id/razorpay/verify', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'client', 'partner', 'partners'), asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
   const order = await scopedOrder(store, request, request.params.id);
+  if (!order || order.status !== 'awaiting_approval') return responseError(response, 'This job is not ready for payment verification.', 422);
+  if (!ownsOrder(order, request.auth) && !isStaff(request.auth)) return responseError(response, 'Only the job owner can pay for this job.', 403);
   const gatewayOrderId = String(request.body.razorpay_order_id || '').trim();
   const paymentId = String(request.body.razorpay_payment_id || '').trim();
   const signature = String(request.body.razorpay_signature || '').trim();
@@ -1204,7 +1284,7 @@ router.post('/orders/:id/razorpay/verify', ...roleGuard(request => request.app.l
   let invoice = await store.findOne('invoices', { order_id: order.id });
   if (!invoice) invoice = await store.insert('invoices', { order_id: order.id, client_id: order.client_id, invoice_no: `INV-${String(order.id).padStart(5, '0')}`, issue_date: isoNow().slice(0, 10), subtotal: amount, tax_percent: 0, tax_amount: 0, total_amount: amount, paid_amount: amount, status: 'paid', notes: 'Razorpay payment', created_at: isoNow(), updated_at: isoNow(), partner_id: order.partner_id || null });
   await store.update('payments', { id: payment.id }, { invoice_id: invoice.id });
-  response.json({ ok: true, message: 'Payment verified successfully.', order: await resolveOrder(store, updated) });
+  response.json({ ok: true, message: 'Payment verified successfully.', order: await resolveOrder(store, updated, request.auth) });
 }));
 
 router.post('/orders/:id/payment', ...roleGuard(request => request.app.locals.store, 'admin', 'manager'), asyncRoute(async (request, response) => {
@@ -1218,7 +1298,7 @@ router.post('/orders/:id/payment', ...roleGuard(request => request.app.locals.st
     ? await store.update('payments', { id: pendingPayment.id }, { amount, method: request.body.method || pendingPayment.method || 'manual', reference_no: request.body.reference_no || pendingPayment.reference_no || '', notes: request.body.notes || pendingPayment.notes || '', received_by: request.auth.user.id, received_at: reviewStatus === 'verified' ? isoNow() : null, status: reviewStatus, updated_at: isoNow(), partner_id: order.partner_id || null })
     : await store.insert('payments', { invoice_id: null, order_id: order.id, amount, method: request.body.method || 'manual', reference_no: request.body.reference_no || '', notes: request.body.notes || '', received_by: request.auth.user.id, received_at: reviewStatus === 'verified' ? isoNow() : null, status: reviewStatus, created_at: isoNow(), partner_id: order.partner_id || null });
   const updated = await store.update('orders', { id: order.id }, { payment_status: reviewStatus, payment_method: request.body.method || order.payment_method || 'manual', payment_reference: request.body.reference_no || order.payment_reference || '', updated_at: isoNow() });
-  if (reviewStatus !== 'verified') return response.json({ ok: true, order: await resolveOrder(store, updated) });
+  if (reviewStatus !== 'verified') return response.json({ ok: true, order: await resolveOrder(store, updated, request.auth) });
   let invoice = await store.findOne('invoices', { order_id: order.id });
   if (!invoice) {
     invoice = await store.insert('invoices', { order_id: order.id, client_id: order.client_id, invoice_no: `INV-${String(order.id).padStart(5, '0')}`, issue_date: isoNow().slice(0, 10), due_date: null, subtotal: amount, tax_percent: 0, tax_amount: 0, total_amount: amount, paid_amount: amount, status: 'paid', notes: '', created_at: isoNow(), updated_at: isoNow(), partner_id: order.partner_id || null });
@@ -1226,7 +1306,7 @@ router.post('/orders/:id/payment', ...roleGuard(request => request.app.locals.st
     invoice = await store.update('invoices', { id: invoice.id }, { paid_amount: amount, status: 'paid', updated_at: isoNow() });
   }
   await store.update('payments', { id: payment.id }, { invoice_id: invoice.id });
-  response.json({ ok: true, order: await resolveOrder(store, updated) });
+  response.json({ ok: true, order: await resolveOrder(store, updated, request.auth) });
 }));
 
 router.post('/orders/:id/documents', authRequired((request) => request.app.locals.store), upload.single('file'), asyncRoute(async (request, response) => {
@@ -1238,10 +1318,11 @@ router.post('/orders/:id/documents', authRequired((request) => request.app.local
     folder: 'documents',
     metadata: { kind: 'order-document', order_id: order.id, uploaded_by: request.auth.user.id }
   });
+  const submitterRole = roleSlug(request.auth);
   const document = await store.insert('order_documents', {
     order_id: order.id,
     requirement_id: numericId(request.body.requirement_id),
-    source: roleSlug(request.auth) === 'client' ? 'client' : 'staff',
+    source: ['client', 'partner', 'partners'].includes(submitterRole) ? submitterRole : 'staff',
     label: String(request.body.label || request.file.originalname),
     original_name: request.file.originalname,
     stored_name: stored.stored_name,
@@ -1261,7 +1342,7 @@ router.get('/orders/:id/invoice.pdf', authRequired((request) => request.app.loca
   const store = request.app.locals.store;
   const order = await scopedOrder(store, request, request.params.id);
   if (!order) return responseError(response, 'Order not found or access is not allowed.', 404);
-  const item = await resolveOrder(store, order);
+  const item = await resolveOrder(store, order, request.auth);
   const settings = await settingsMap(store);
   response.setHeader('Content-Type', 'application/pdf');
   response.setHeader('Content-Disposition', `inline; filename="${item.invoice?.invoice_no || item.order_no}.pdf"`);
@@ -1548,7 +1629,7 @@ router.get('/partner/dashboard', ...roleGuard(request => request.app.locals.stor
 }));
 
 const collectionWhitelist = new Set([
-  'activity_logs', 'activity_notification_reads', 'clients', 'coupon_redemptions', 'coupons', 'customer_details', 'executive_order_payouts', 'executive_payment_profiles', 'executive_salary_payments', 'faqs', 'grow_ranking_keywords', 'grow_ranking_logs', 'grow_ranking_tasks', 'invoices', 'leads', 'marketing_campaigns', 'intelligence_models', 'notifications', 'notification_logs', 'notification_manager', 'notification_templates', 'notification_workflows', 'notification_user_reads', 'orders', 'order_documents', 'order_workflow_reminder_logs', 'partner_activity_logs', 'partner_client_portal_access', 'partner_coupons', 'partner_coupon_redemptions', 'partner_documents', 'partner_leads', 'partner_messages', 'partner_notifications', 'partner_orders', 'partner_order_documents', 'partner_profiles', 'partner_staff', 'partner_subscriptions', 'partner_subscription_requests', 'partner_tasks', 'payments', 'permission_catalog', 'roles', 'seo_keywords', 'services', 'service_applications', 'service_banners', 'service_benefits', 'service_categories', 'service_requirements', 'service_reviews', 'service_types', 'sidebar_menus', 'support_conversations', 'support_messages', 'tax_rules', 'testimonials', 'users', 'user_push_tokens', 'user_roles', 'website_settings'
+  'activity_logs', 'activity_notification_reads', 'clients', 'coupon_redemptions', 'coupons', 'customer_details', 'executive_order_payouts', 'executive_payment_profiles', 'executive_salary_payments', 'faqs', 'grow_ranking_keywords', 'grow_ranking_logs', 'grow_ranking_tasks', 'invoices', 'leads', 'marketing_campaigns', 'intelligence_models', 'notifications', 'notification_logs', 'notification_manager', 'notification_templates', 'notification_workflows', 'notification_user_reads', 'orders', 'order_documents', 'order_messages', 'order_workflow_reminder_logs', 'partner_activity_logs', 'partner_client_portal_access', 'partner_coupons', 'partner_coupon_redemptions', 'partner_documents', 'partner_leads', 'partner_messages', 'partner_notifications', 'partner_orders', 'partner_order_documents', 'partner_profiles', 'partner_staff', 'partner_subscriptions', 'partner_subscription_requests', 'partner_tasks', 'payments', 'permission_catalog', 'roles', 'seo_keywords', 'services', 'service_applications', 'service_banners', 'service_benefits', 'service_categories', 'service_requirements', 'service_reviews', 'service_types', 'sidebar_menus', 'support_conversations', 'support_messages', 'tax_rules', 'testimonials', 'users', 'user_push_tokens', 'user_roles', 'website_settings'
 ]);
 
 const adminOnlyCollections = new Set(['roles', 'user_roles', 'permission_catalog', 'users', 'website_settings']);
@@ -1868,6 +1949,44 @@ router.delete('/notifications/push-token', authRequired((request) => request.app
   response.json({ ok: true });
 }));
 
+// Messages remain attached to the job so partner, client, and assigned staff share one conversation.
+router.get('/orders/:id/messages', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const order = await scopedOrder(store, request, request.params.id);
+  if (!order) return responseError(response, 'Order not found or access is not allowed.', 404);
+  const messages = await store.find('order_messages', { order_id: Number(order.id) }, { sort: { id: 1 }, limit: 200 });
+  response.json({ ok: true, messages });
+}));
+
+router.post('/orders/:id/messages', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const order = await scopedOrder(store, request, request.params.id);
+  if (!order) return responseError(response, 'Order not found or access is not allowed.', 404);
+  const body = String(request.body.message || '').trim();
+  if (!body) return responseError(response, 'Write a message before sending.');
+  if (body.length > 3000) return responseError(response, 'Messages must be 3,000 characters or fewer.');
+  const message = await store.insert('order_messages', {
+    order_id: Number(order.id), sender_user_id: Number(request.auth.user.id),
+    sender_name: String(request.auth.user.name || 'TaxSaathi user'), sender_role: roleSlug(request.auth),
+    message: body, created_at: isoNow()
+  });
+  const senderId = Number(request.auth.user.id);
+  const recipientId = Number(order.assigned_user_id) === senderId
+    ? Number(order.submitted_by_user_id || 0)
+    : Number(order.assigned_user_id || 0);
+  if (recipientId && recipientId !== senderId) {
+    const recipient = await store.findOne('users', { id: recipientId });
+    const recipientRole = recipient ? await store.findOne('roles', { id: Number(recipient.role_id) }) : null;
+    const recipientUrl = ['partner', 'partners'].includes(String(recipientRole?.slug || '').toLowerCase())
+      ? `/partner/jobs/${order.id}`
+      : String(order.submitter_role || '') === 'client' && Number(recipientId) === Number(order.submitted_by_user_id)
+        ? `/client/orders/${order.id}`
+        : `/admin/orders/${order.id}`;
+    await notify(store, { userId: recipientId, title: 'New job message', message: `${order.order_no}: ${body.slice(0, 160)}`, severity: 'info', url: recipientUrl, orderId: order.id });
+  }
+  response.status(201).json({ ok: true, message });
+}));
+
 // Complete the legacy document workflow: wrong-document feedback, reuploads, and final outputs.
 router.post('/orders/:id/documents/:documentId/status', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'executive'), asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
@@ -1876,12 +1995,16 @@ router.post('/orders/:id/documents/:documentId/status', ...roleGuard(request => 
   if (!order || !document) return responseError(response, 'Order document not found.', 404);
   const documentStatus = String(request.body.status || 'active').toLowerCase();
   if (!['active', 'submitted', 'wrong', 'rejected', 'delivered', 'replaced'].includes(documentStatus)) return responseError(response, 'Unsupported document status.');
+  const isPendingOutput = document.source === 'staff' && document.document_status === 'pending_approval';
+  if (isPendingOutput && (documentStatus === 'active' || documentStatus === 'delivered' || asBool(request.body.is_client_visible))) {
+    return responseError(response, 'Use the job approval action to release a final deliverable.', 403);
+  }
   const updated = await store.update('order_documents', { id: document.id }, {
     document_status: documentStatus,
     wrong_reason: documentStatus === 'wrong' ? String(request.body.reason || '').trim() : document.wrong_reason || null,
     wrong_marked_by: documentStatus === 'wrong' ? request.auth.user.id : document.wrong_marked_by || null,
     wrong_marked_at: documentStatus === 'wrong' ? isoNow() : document.wrong_marked_at || null,
-    is_client_visible: request.body.is_client_visible === undefined ? 1 : (asBool(request.body.is_client_visible) ? 1 : 0),
+    is_client_visible: isPendingOutput ? 0 : request.body.is_client_visible === undefined ? 1 : (asBool(request.body.is_client_visible) ? 1 : 0),
     updated_at: isoNow()
   });
   const clientUser = order.client_id ? await store.findOne('users', { client_id: Number(order.client_id), role_id: 5 }) : null;
@@ -1894,6 +2017,7 @@ router.post('/orders/:id/documents/:documentId/reupload', authRequired((request)
   const order = await scopedOrder(store, request, request.params.id);
   const previous = await store.findOne('order_documents', { id: Number(request.params.documentId), order_id: Number(request.params.id) });
   if (!order || !previous) return responseError(response, 'Order document not found or access is not allowed.', 404);
+  if (previous.source === 'staff' && ['pending_approval', 'delivered'].includes(String(previous.document_status || ''))) return responseError(response, 'Final deliverables must be resubmitted through the staff output action.', 403);
   if (!request.file) return responseError(response, 'Choose a replacement file.');
   if (roleSlug(request.auth) === 'client' && !asBool(previous.is_client_visible)) return responseError(response, 'This document cannot be replaced by the client.', 403);
   const stored = await saveUpload(store, request.file, { folder: 'documents', metadata: { kind: 'document-reupload', order_id: order.id, replaces_document_id: previous.id, uploaded_by: request.auth.user.id } });
@@ -1919,10 +2043,13 @@ router.post('/orders/:id/documents/:documentId/reupload', authRequired((request)
   response.status(201).json({ ok: true, document: replacement });
 }));
 
-router.post('/orders/:id/output', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'executive'), upload.single('file'), asyncRoute(async (request, response) => {
+router.post('/orders/:id/output', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'executive', 'partner', 'partners'), upload.single('file'), asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
   const order = await store.findOne('orders', { id: Number(request.params.id) });
   if (!order) return responseError(response, 'Order not found.', 404);
+  const role = roleSlug(request.auth);
+  if (!['admin', 'manager'].includes(role) && Number(order.assigned_user_id) !== Number(request.auth.user.id)) return responseError(response, 'Only the assigned worker can submit this deliverable.', 403);
+  if (!['assigned', 'work_in_progress', 'awaiting_approval'].includes(String(order.status || ''))) return responseError(response, 'Assign the job and start work before submitting a deliverable.');
   if (!request.file) return responseError(response, 'Choose an output file.');
   const stored = await saveUpload(store, request.file, { folder: 'documents', metadata: { kind: 'order-output', order_id: order.id, uploaded_by: request.auth.user.id } });
   const document = await store.insert('order_documents', {
@@ -1936,17 +2063,16 @@ router.post('/orders/:id/output', ...roleGuard(request => request.app.locals.sto
     storage: stored.storage,
     mime_type: stored.mime_type,
     size_bytes: stored.size_bytes,
-    is_client_visible: 1,
+    is_client_visible: 0,
     uploaded_by: request.auth.user.id,
-    document_status: 'delivered',
+    document_status: 'pending_approval',
     created_at: isoNow(),
     updated_at: isoNow()
   });
-  const nextStatus = String(request.body.complete || '').toLowerCase() === 'true' ? 'completed' : order.status;
-  if (nextStatus !== order.status) await store.update('orders', { id: order.id }, { status: nextStatus, completed_at: isoNow(), updated_at: isoNow() });
-  const clientUser = order.client_id ? await store.findOne('users', { client_id: Number(order.client_id), role_id: 5 }) : null;
-  if (clientUser) await notify(store, { userId: clientUser.id, title: 'Final document delivered', message: `A final output is ready for ${order.order_no}.`, severity: 'success', url: `/client/orders/${order.id}`, orderId: order.id });
-  response.status(201).json({ ok: true, document, order: await resolveOrder(store, await store.findOne('orders', { id: order.id })) });
+  const updated = await store.update('orders', { id: order.id }, { status: 'awaiting_approval', deliverable_submitted_by: request.auth.user.id, deliverable_submitted_at: isoNow(), updated_at: isoNow() });
+  await store.insert('activity_logs', { user_id: request.auth.user.id, order_id: order.id, action: 'order.deliverable.submitted', description: `Deliverable submitted for ${order.order_no}`, meta_json: '{}', created_at: isoNow() });
+  await notify(store, { userId: null, title: 'Deliverable ready for review', message: `${order.order_no} has a new deliverable for admin approval.`, severity: 'info', url: `/admin/orders/${order.id}`, orderId: order.id });
+  response.status(201).json({ ok: true, document, order: await resolveOrder(store, updated, request.auth) });
 }));
 
 router.get('/orders/:id/activity', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {

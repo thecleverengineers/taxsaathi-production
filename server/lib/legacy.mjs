@@ -126,7 +126,7 @@ export async function userWithRole(store, user) {
   return { user, role };
 }
 
-export async function resolveOrder(store, order) {
+export async function resolveOrder(store, order, viewer = null) {
   if (!order) return null;
   const [service, client, assignee, documents, invoice, payments] = await Promise.all([
     store.findOne('services', { id: Number(order.service_id) }),
@@ -136,6 +136,8 @@ export async function resolveOrder(store, order) {
     store.findOne('invoices', { order_id: Number(order.id) }),
     store.find('payments', { order_id: Number(order.id) }, { sort: { id: -1 } })
   ]);
+  const viewerRole = String(viewer?.role?.slug || '').toLowerCase();
+  const canViewPrivateDocuments = ['admin', 'manager', 'executive'].includes(viewerRole);
   return {
     ...order,
     fee_amount: asNumber(order.fee_amount),
@@ -146,7 +148,9 @@ export async function resolveOrder(store, order) {
       ? { id: client.id, name: client.name, phone: client.phone, email: client.email, company_name: client.company_name }
       : null,
     assignee: assignee ? { id: assignee.id, name: assignee.name, email: assignee.email } : null,
-    documents: documents.map((document) => ({
+    documents: documents
+      .filter((document) => canViewPrivateDocuments || asBool(document.is_client_visible))
+      .map((document) => ({
       ...document,
       download_url: document.id ? `/api/orders/${order.id}/documents/${document.id}` : null
     })),
@@ -163,10 +167,15 @@ export function allowedOrderFilter(auth) {
   if (role === 'client') return { client_id: Number(user.client_id || 0) };
   if (role === 'executive') return { assigned_user_id: Number(user.id) };
   if (role === 'partners' || role === 'partner') {
-    const ids = [...new Set([user.id, user.partner_id]
+    const ids = [...new Set([user.partner_id, user.id]
       .map(Number)
       .filter((value) => Number.isFinite(value) && value > 0))];
-    return { partner_id: { $in: ids.length ? ids : [0] } };
+    return {
+      $or: [
+        { partner_id: { $in: ids.length ? ids : [0] } },
+        { assigned_user_id: Number(user.id) }
+      ]
+    };
   }
   return { client_id: Number(user.client_id || 0) };
 }
