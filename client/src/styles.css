@@ -2300,3 +2300,65 @@ h1, h2, h3, strong { letter-spacing: -.025em; }
     flex-direction: column;
   }
 }
+
+
+/* Premium appearance toggle in the responsive workspace sidebar. */
+.sidebar-premium-card {
+  flex: 0 0 auto;
+  margin: 12px 3px 10px;
+  padding: 11px;
+  border: 1px solid rgba(148, 111, 34, .24);
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(255, 251, 235, .94), rgba(241, 230, 197, .72));
+  color: #24443d;
+  transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.sidebar-premium-row { display: flex; align-items: center; gap: 8px; }
+.sidebar-premium-icon {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  color: #8c6514;
+  background: rgba(190, 147, 49, .14);
+}
+.sidebar-premium-copy { display: flex; min-width: 0; flex: 1 1 auto; flex-direction: column; gap: 2px; }
+.sidebar-premium-copy strong { color: #394338; font-size: 11px; line-height: 1.25; }
+.sidebar-premium-copy small { color: rgba(36, 68, 61, .68); font-size: 9px; line-height: 1.35; }
+.sidebar-premium-card p { margin: 8px 0 0; color: rgba(36, 68, 61, .68); font-size: 9px; line-height: 1.45; }
+.sidebar-premium-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 38px;
+  height: 22px;
+  flex: 0 0 auto;
+  padding: 2px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(36, 68, 61, .26);
+  transition: background .2s ease;
+}
+.sidebar-premium-switch span {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, .2);
+  transition: transform .2s ease;
+}
+.sidebar-premium-switch[aria-checked="true"] { background: #a97819; }
+.sidebar-premium-switch[aria-checked="true"] span { transform: translateX(16px); }
+.sidebar-premium-switch:focus-visible { outline: 3px solid #145da0; outline-offset: 2px; }
+.dashboard-app.premium-mode .dashboard-sidebar {
+  border-right-color: rgba(169, 120, 25, .22);
+  background: linear-gradient(180deg, #fbf7e9 0%, #eee2c1 56%, #e5d0a0 100%);
+}
+.dashboard-app.premium-mode .sidebar-premium-card {
+  border-color: rgba(169, 120, 25, .45);
+  background: linear-gradient(145deg, #fff8dc, #ead8a6);
+  box-shadow: 0 8px 20px rgba(122, 93, 27, .1);
+}
