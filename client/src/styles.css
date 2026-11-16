@@ -2247,3 +2247,56 @@ h1, h2, h3, strong { letter-spacing: -.025em; }
 .sidebar-nav::-webkit-scrollbar-thumb:hover {
   background: rgba(15, 23, 42, .52);
 }
+
+
+/* TaxSaathi job conversation */
+.task-message-list {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0;
+  max-height: 460px;
+  overflow-y: auto;
+}
+.task-message {
+  background: #f6f8fc;
+  border: 1px solid #e6ebf2;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.task-message > strong {
+  color: #162238;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  gap: 8px;
+  justify-content: space-between;
+}
+.task-message > strong small {
+  color: #7a8799;
+  font-size: 11px;
+  font-weight: 500;
+}
+.task-message p {
+  color: #344256;
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.task-message-form {
+  align-items: flex-end;
+  display: flex;
+  gap: 12px;
+}
+.task-message-form textarea {
+  min-height: 76px;
+  resize: vertical;
+  width: 100%;
+}
+@media (max-width: 640px) {
+  .task-message-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
