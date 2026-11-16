@@ -61,7 +61,7 @@ services:
     name: taxsaathi-workflow-reminders
     runtime: node
     region: singapore
-    plan: free
+    plan: 0.5c-512mb
     schedule: "*/15 * * * *"
     buildCommand: npm ci
     startCommand: npm run cron:reminders
