@@ -10,6 +10,7 @@ import ServiceApplicationPage from './pages/ServiceApplicationPage';
 import AuthPage from './pages/AuthPage';
 import DashboardHomePage from './pages/DashboardHomePage';
 import PartnerDashboardPage from './pages/PartnerDashboardPage';
+import PartnerJobsPage from './pages/PartnerJobsPage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import PaymentPage from './pages/PaymentPage';
@@ -38,7 +39,7 @@ export default function App() {
       <Route path="/terms-conditions" element={<LegalPage title="Terms and conditions" />} />
       <Route path="/privacy-policy" element={<LegalPage title="Privacy policy" />} />
       <Route path="/refund-policy" element={<LegalPage title="Refund policy" />} />
-      <Route path="/payment-method" element={<LegalPage title="Payment methods" text="TaxSaathi supports the payment methods configured by the service team. Payment records are attached to orders and reviewed before work begins." />} />
+      <Route path="/payment-method" element={<LegalPage title="Payment methods" text="TaxSaathi accepts UPI payment proof after staff submit completed work. Payment records are attached to jobs and reviewed before deliverables are released." />} />
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/login" element={<Navigate to="/auth" replace />} />
       <Route path="/register" element={<AuthPage />} />
@@ -52,6 +53,9 @@ export default function App() {
       <Route path="/client/orders/:id/pay" element={<Protected roles={['client']}><PaymentPage /></Protected>} />
       <Route path="/client/profile" element={<Protected roles={['client']}><ProfilePage /></Protected>} />
       <Route path="/partner/dashboard" element={<Protected roles={['admin', 'manager', 'partner', 'partners']}><PartnerDashboardPage /></Protected>} />
+      <Route path="/partner/jobs" element={<Protected roles={['admin', 'manager', 'partner', 'partners']}><PartnerJobsPage /></Protected>} />
+      <Route path="/partner/jobs/:id" element={<Protected roles={['admin', 'manager', 'partner', 'partners']}><OrderDetailPage job /></Protected>} />
+      <Route path="/partner/jobs/:id/pay" element={<Protected roles={['admin', 'manager', 'partner', 'partners']}><PaymentPage job /></Protected>} />
       <Route path="/partner/orders" element={<Protected roles={['admin', 'manager', 'partner', 'partners']}><OrdersPage partner /></Protected>} />
       <Route path="/partner/orders/:id" element={<Protected roles={['admin', 'manager', 'partner', 'partners']}><OrderDetailPage partner /></Protected>} />
       <Route path="/partner/orders/:id/pay" element={<Protected roles={['admin', 'manager', 'partner', 'partners']}><PaymentPage partner /></Protected>} />
