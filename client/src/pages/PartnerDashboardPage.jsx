@@ -28,14 +28,15 @@ export default function PartnerDashboardPage() {
       <PageIntro
         eyebrow={isGlobal ? 'Partner operations' : 'Your partner workspace'}
         title={isGlobal ? 'Partner performance' : `Good to see you, ${(user?.name || 'partner').split(' ')[0]}.`}
-        text={isGlobal ? 'Review partner activity from the authorized operations scope.' : 'Track only your own referred orders, approvals, payments, and partner performance.'}
-        actions={<Link className="button light" to="/partner/orders">Open partner orders <Icon name="arrow" size={16} /></Link>}
+        text={isGlobal ? 'Review partner activity from the authorized operations scope.' : 'Submit client service jobs, follow progress, and review your referrals, payments, and partner performance.'}
+        actions={<><Link className="button light" to="/partner/jobs">Open service jobs <Icon name="arrow" size={16} /></Link><Link className="button dark" to="/services">Submit a job <Icon name="plus" size={16} /></Link></>}
       />
 
       <section className="dashboard-quick-actions-panel partner-quick-actions">
         <div className="dashboard-quick-actions-heading"><div><span>Partner shortcuts</span><h3>Quick actions</h3></div><small>Available for your role</small></div>
         <div className="dashboard-quick-actions-grid">
-          <Link className="dashboard-quick-action" to="/partner/orders"><span><Icon name="orders" size={17} /></span><strong>My orders</strong><Icon name="arrow" size={13} /></Link>
+          <Link className="dashboard-quick-action" to="/partner/jobs"><span><Icon name="orders" size={17} /></span><strong>Service jobs</strong><Icon name="arrow" size={13} /></Link>
+          <Link className="dashboard-quick-action" to="/services"><span><Icon name="plus" size={17} /></span><strong>Submit a job</strong><Icon name="arrow" size={13} /></Link>
           <Link className="dashboard-quick-action" to="/partner/profile"><span><Icon name="userCircle" size={17} /></span><strong>My profile</strong><Icon name="arrow" size={13} /></Link>
           <Link className="dashboard-quick-action" to="/support"><span><Icon name="support" size={17} /></span><strong>Support</strong><Icon name="arrow" size={13} /></Link>
         </div>
