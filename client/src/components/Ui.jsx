@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
 import Icon from './Icons';
+import TaxSaathiLoader from './TaxSaathiLoader';
 import { dateLabel, money, phoneHref, statusLabel, statusTone, whatsappHref } from '../lib/format';
 
-export function PageLoader({ label = 'Loading…' }) {
-  return <div className="page-loader"><span className="spinner" />{label}</div>;
+export function PageLoader({ label = 'Loading your workspace…' }) {
+  return <TaxSaathiLoader label={label} variant="page" />;
 }
 
 export function PageIntro({ eyebrow, title, text, actions }) {

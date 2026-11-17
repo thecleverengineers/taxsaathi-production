@@ -5,12 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0b3c91" />
     <title>TaxSaathi</title>
+    <style>
+      html,body{margin:0;min-height:100%;background:#f6f8fc}
+      .app-bootstrap-fallback{display:flex;box-sizing:border-box;min-height:100vh;min-height:100dvh;align-items:center;justify-content:center;flex-direction:column;gap:19px;padding:28px 16px;background:#f6f8fc;color:#637189;font:600 15px/1.5 Inter,system-ui,sans-serif;text-align:center}
+      .app-bootstrap-fallback .ts-loader__emblem{position:relative;display:grid;width:180px;height:180px;place-items:center}
+      .app-bootstrap-fallback .ts-loader__ring{position:absolute;inset:0;width:100%;height:100%;animation:ts-bootstrap-spin 1.5s linear infinite}
+      .app-bootstrap-fallback .ts-loader__logo{position:relative;display:block;width:74%;height:74%;object-fit:contain}
+      .app-bootstrap-fallback .ts-loader__message{max-width:440px}
+      @keyframes ts-bootstrap-spin{to{transform:rotate(360deg)}}
+      @media(max-width:600px){.app-bootstrap-fallback .ts-loader__emblem{width:158px;height:158px}}
+      @media(prefers-reduced-motion:reduce){.app-bootstrap-fallback .ts-loader__ring{animation:none}}
+    </style>
   </head>
   <body>
     <div id="root">
-      <div class="app-bootstrap-fallback" role="status" aria-live="polite">
-        <strong>TaxSaathi</strong>
-        <span>Loading your secure workspace…</span>
+      <div class="app-bootstrap-fallback" role="status" aria-live="polite" aria-busy="true">
+        <span class="ts-loader__emblem" aria-hidden="true">
+          <svg class="ts-loader__ring" viewBox="0 0 180 180" focusable="false">
+            <defs><linearGradient id="ts-bootstrap-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fae49b"/><stop offset="48%" stop-color="#c29433"/><stop offset="100%" stop-color="#f6d46a"/></linearGradient></defs>
+            <circle cx="90" cy="90" r="80" fill="none" stroke="#e0e7f0" stroke-width="7"/>
+            <circle cx="90" cy="90" r="80" fill="none" stroke="#173872" stroke-width="8" stroke-linecap="round" stroke-dasharray="216 503"/>
+            <circle cx="90" cy="90" r="80" fill="none" stroke="url(#ts-bootstrap-gold)" stroke-width="8" stroke-linecap="round" stroke-dasharray="116 503" stroke-dashoffset="-232"/>
+          </svg>
+          <img class="ts-loader__logo" src="/taxsaathi-logo.png" alt="" width="133" height="133" />
+        </span>
+        <span class="ts-loader__message">Loading your secure workspace…</span>
       </div>
     </div>
     <script type="module" data-cfasync="false" src="/src/main.jsx"></script>
