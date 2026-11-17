@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { assetUrl } from '../lib/api';
 import Icon from './Icons';
 import TaxSaathiLoader from './TaxSaathiLoader';
 import { dateLabel, money, phoneHref, statusLabel, statusTone, whatsappHref } from '../lib/format';
@@ -29,7 +30,7 @@ export function ServiceCard({ service, contact = {} }) {
   const whatsapp = whatsappHref(contact.whatsapp || contact.phone, `${service.title || 'This service'} - I would like to know more.`);
   return <article className="service-card">
     <Link to={`/services/${service.slug}`} className="service-card-main">
-      <div className="service-card-icon">{icon ? <img src={icon} alt="" /> : <span>{String(service.title || 'TS').split(/\s+/).slice(0, 2).map((part) => part[0]).join('')}</span>}</div>
+      <div className="service-card-icon">{icon ? <img src={assetUrl(icon)} alt="" /> : <span>{String(service.title || 'TS').split(/\s+/).slice(0, 2).map((part) => part[0]).join('')}</span>}</div>
       <div className="service-card-meta"><span>{service.category?.title || service.service_category || 'Tax services'}</span>{service.is_featured && <b>Featured</b>}</div>
       <h3>{service.title}</h3>
       <p>{service.excerpt || 'Professional support with a clear digital workflow.'}</p>
