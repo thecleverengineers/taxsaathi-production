@@ -90,7 +90,7 @@ export default function PublicLayout() {
   }
 
   return (
-    <div className={onHome ? 'public-site ts-home-site' : 'public-site'}>
+    <div className={onHome ? 'public-site ts-brand-site ts-home-site' : 'public-site ts-brand-site'}>
       <div className="ambient-orb orb-one" />
       <div className="ambient-orb orb-two" />
       <header className="public-header">
@@ -105,8 +105,8 @@ export default function PublicLayout() {
             onClick={() => { setSidebarOpen((current) => !current); setServicesOpen(false); }}
           ><Icon name={sidebarOpen ? 'close' : 'menu'} size={21} /></button>
           <Link to="/" className="brand-mark-link" onClick={closeMenus}>
-            <span className="brand-logo-frame"><img src={onHome ? '/taxsaathi-logo.png' : assetUrl(site.site_logo)} alt={site.site_logo_alt || site.site_name} /></span>
-            <span><strong>{onHome ? 'Tax Saathi' : site.site_name}</strong><small>Tax & compliance services</small></span>
+            <span className="brand-logo-frame"><img src="/taxsaathi-logo.png" alt={site.site_logo_alt || site.site_name} /></span>
+            <span><strong>{'Tax Saathi'}</strong><small>Tax & compliance services</small></span>
           </Link>
           <nav className="public-nav-links">
             <NavLink to="/" className={navClass} end onClick={closeMenus}>Home</NavLink>
@@ -150,8 +150,8 @@ export default function PublicLayout() {
         aria-modal={sidebarOpen} aria-hidden={!sidebarOpen} inert={!sidebarOpen}
         className={`public-sidebar-drawer ${sidebarOpen ? 'open' : ''}`}>
         <div className="public-sidebar-head">
-          <div className="public-sidebar-brand"><span className="brand-logo-frame"><img src={onHome ? '/taxsaathi-logo.png' : assetUrl(site.site_logo)} alt="" /></span>
-            <span><strong>{onHome ? 'Tax Saathi' : (site.site_name || 'TaxSaathi')}</strong><small>Navigation menu</small></span></div>
+          <div className="public-sidebar-brand"><span className="brand-logo-frame"><img src="/taxsaathi-logo.png" alt="" /></span>
+            <span><strong>{'Tax Saathi'}</strong><small>Navigation menu</small></span></div>
           <button type="button" data-sidebar-close className="public-sidebar-close" aria-label="Hide sidebar" onClick={() => setSidebarOpen(false)}>
             <Icon name="close" size={21} />
           </button>
@@ -195,7 +195,7 @@ export default function PublicLayout() {
       <main><Outlet /></main>
       <footer className="public-footer">
         <div className="container-wide footer-grid">
-          <div><div className="footer-brand"><span className="brand-logo-frame small"><img src={onHome ? '/taxsaathi-logo.png' : assetUrl(site.site_logo)} alt="" /></span><strong>{onHome ? 'Tax Saathi' : site.site_name}</strong></div><p>Structured tax, filing, and compliance services backed by a clear digital workflow.</p></div>
+          <div><div className="footer-brand"><span className="brand-logo-frame small"><img src="/taxsaathi-logo.png" alt="" /></span><strong>{'Tax Saathi'}</strong></div><p>Structured tax, filing, and compliance services backed by a clear digital workflow.</p></div>
           <div><span className="footer-title">Explore</span><Link to="/services">Services</Link><Link to="/tax-calculators">Calculators</Link><Link to="/contact">Contact</Link></div>
           <div><span className="footer-title">Reach us</span><a href={`tel:${site.site_phone || ''}`}>{site.site_phone || 'Phone support'}</a><a href={`mailto:${site.site_email || ''}`}>{site.site_email || 'Email support'}</a><span>{site.contact_address || 'Guwahati, India'}</span></div>
         </div>
