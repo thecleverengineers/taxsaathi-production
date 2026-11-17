@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { api, assetUrl } from '../lib/api';
 import { useAuth } from './AuthContext';
 import Icon from './Icons';
@@ -9,7 +9,10 @@ export default function PublicLayout() {
   const [site, setSite] = useState({ site_name: 'TaxSaathi', site_logo: '/uploads/site/site_logo_20260605161136_36ef8081dd8a.png' });
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [open, setOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarRef = useRef(null);
+  const sidebarToggleRef = useRef(null);
+  const location = useLocation();
   const [servicesOpen, setServicesOpen] = useState(false);
   const servicesDropdownRef = useRef(null);
 
@@ -37,20 +40,69 @@ export default function PublicLayout() {
     };
   }, [servicesOpen]);
 
+
+  useEffect(() => {
+    setSidebarOpen(false);
+    setServicesOpen(false);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (!sidebarOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const drawer = sidebarRef.current;
+    drawer?.querySelector('[data-sidebar-close]')?.focus();
+    function handleSidebarKeyboard(event) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSidebarOpen(false);
+        return;
+      }
+      if (event.key !== 'Tab' || !drawer) return;
+      const focusable = Array.from(drawer.querySelectorAll('a[href], button:not([disabled])'))
+        .filter((element) => element.getClientRects().length > 0);
+      if (!focusable.length) return;
+      if (event.shiftKey && document.activeElement === focusable[0]) {
+        event.preventDefault();
+        focusable[focusable.length - 1].focus();
+      } else if (!event.shiftKey && document.activeElement === focusable[focusable.length - 1]) {
+        event.preventDefault();
+        focusable[0].focus();
+      }
+    }
+    document.addEventListener('keydown', handleSidebarKeyboard);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleSidebarKeyboard);
+      sidebarToggleRef.current?.focus();
+    };
+  }, [sidebarOpen]);
+
   const navClass = ({ isActive }) => `public-nav-link ${isActive ? 'active' : ''}`;
-  const closeMenus = () => { setOpen(false); setServicesOpen(false); };
+  const closeMenus = () => { setSidebarOpen(false); setServicesOpen(false); };
+  const role = user?.role?.slug || 'client';
+  const ordersPath = ['partner', 'partners'].includes(role) ? '/partner/orders' : ['admin', 'manager', 'executive'].includes(role) ? '/admin/orders' : '/client/orders';
+  const sidebarLinkClass = ({ isActive }) => `public-sidebar-link ${isActive ? 'active' : ''}`;
   return (
     <div className="public-site">
       <div className="ambient-orb orb-one" />
       <div className="ambient-orb orb-two" />
       <header className="public-header">
         <div className="public-nav container-wide">
+          <button
+            ref={sidebarToggleRef}
+            type="button"
+            className="public-sidebar-trigger"
+            aria-controls="public-navigation-drawer"
+            aria-expanded={sidebarOpen}
+            aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+            onClick={() => { setSidebarOpen((current) => !current); setServicesOpen(false); }}
+          ><Icon name={sidebarOpen ? 'close' : 'menu'} size={21} /></button>
           <Link to="/" className="brand-mark-link" onClick={closeMenus}>
             <span className="brand-logo-frame"><img src={assetUrl(site.site_logo)} alt={site.site_logo_alt || site.site_name} /></span>
             <span><strong>{site.site_name}</strong><small>Tax & compliance services</small></span>
           </Link>
-          <button className="icon-button mobile-only" onClick={() => { setOpen((value) => !value); setServicesOpen(false); }} aria-label="Open navigation"><Icon name={open ? 'close' : 'menu'} /></button>
-          <nav className={`public-nav-links ${open ? 'open' : ''}`}>
+          <nav className="public-nav-links">
             <NavLink to="/" className={navClass} end onClick={closeMenus}>Home</NavLink>
             <div className="nav-dropdown" ref={servicesDropdownRef}>
               <button
@@ -86,6 +138,54 @@ export default function PublicLayout() {
           {user ? <button className="nav-cta" onClick={logout}><Icon name="logout" size={16} /> Sign out</button> : <Link to="/auth" className="nav-cta">Get started <Icon name="arrow" size={16} /></Link>}
         </div>
       </header>
+
+      <div className={`public-sidebar-backdrop ${sidebarOpen ? 'show' : ''}`} aria-hidden="true" onClick={() => setSidebarOpen(false)} />
+      <aside id="public-navigation-drawer" ref={sidebarRef} role="dialog" aria-label="TaxSaathi navigation sidebar"
+        aria-modal={sidebarOpen} aria-hidden={!sidebarOpen} inert={!sidebarOpen}
+        className={`public-sidebar-drawer ${sidebarOpen ? 'open' : ''}`}>
+        <div className="public-sidebar-head">
+          <div className="public-sidebar-brand"><span className="brand-logo-frame"><img src={assetUrl(site.site_logo)} alt="" /></span>
+            <span><strong>{site.site_name || 'TaxSaathi'}</strong><small>Navigation menu</small></span></div>
+          <button type="button" data-sidebar-close className="public-sidebar-close" aria-label="Hide sidebar" onClick={() => setSidebarOpen(false)}>
+            <Icon name="close" size={21} />
+          </button>
+        </div>
+        <div className="public-sidebar-content">
+          <span className="public-sidebar-label">EXPLORE</span>
+          <nav className="public-sidebar-nav" aria-label="Main navigation">
+            <NavLink end to="/" className={sidebarLinkClass} onClick={closeMenus}><Icon name="home" size={18} />Home<Icon name="chevronRight" size={15} /></NavLink>
+            <NavLink to="/services" className={sidebarLinkClass} onClick={closeMenus}><Icon name="services" size={18} />All services<Icon name="chevronRight" size={15} /></NavLink>
+            <NavLink to="/tax-calculators" className={sidebarLinkClass} onClick={closeMenus}><Icon name="calculator" size={18} />Tax calculators<Icon name="chevronRight" size={15} /></NavLink>
+            <NavLink to="/about" className={sidebarLinkClass} onClick={closeMenus}><Icon name="shield" size={18} />About TaxSaathi<Icon name="chevronRight" size={15} /></NavLink>
+            <NavLink to="/contact" className={sidebarLinkClass} onClick={closeMenus}><Icon name="phone" size={18} />Contact support<Icon name="chevronRight" size={15} /></NavLink>
+          </nav>
+          {user && <>
+            <span className="public-sidebar-label">MY ACCOUNT</span>
+            <nav className="public-sidebar-nav" aria-label="Account navigation">
+              <NavLink to="/dashboard" className={sidebarLinkClass} onClick={closeMenus}><Icon name="dashboard" size={18} />My workspace<Icon name="chevronRight" size={15} /></NavLink>
+              <NavLink to={ordersPath} className={sidebarLinkClass} onClick={closeMenus}><Icon name="orders" size={18} />My orders<Icon name="chevronRight" size={15} /></NavLink>
+              {['admin', 'manager'].includes(role) && <NavLink to="/admin/services" className={sidebarLinkClass} onClick={closeMenus}><Icon name="settings" size={18} />Manage services<Icon name="chevronRight" size={15} /></NavLink>}
+              <NavLink to="/profile" className={sidebarLinkClass} onClick={closeMenus}><Icon name="userCircle" size={18} />Profile & settings<Icon name="chevronRight" size={15} /></NavLink>
+            </nav>
+          </>}
+          <div className="public-sidebar-categories-head"><span className="public-sidebar-label">SERVICE CATEGORIES</span>
+            <Link to="/services" onClick={closeMenus}>View all</Link></div>
+          <nav className="public-sidebar-categories" aria-label="Service categories">
+            {categories.length ? categories.map((category) => (
+              <Link key={category.id} to={`/services?category=${encodeURIComponent(category.slug)}`}
+                className={`public-sidebar-category ${location.pathname === '/services' && new URLSearchParams(location.search).get('category') === category.slug ? 'active' : ''}`}
+                onClick={closeMenus}>
+                <span className="public-sidebar-category-image">{category.image_url ? <img src={assetUrl(category.image_url)} alt="" /> : <Icon name="services" size={17} />}</span>
+                <span>{category.title}</span><small>{Number(category.service_count || 0)}</small>
+              </Link>
+            )) : <p className="public-sidebar-empty">{categoriesLoading ? 'Loading service categories…' : 'No categories available.'}</p>}
+          </nav>
+        </div>
+        <div className="public-sidebar-foot">
+          {user ? <button type="button" onClick={() => { closeMenus(); void logout(); }}><Icon name="logout" size={17} />Sign out</button> :
+            <Link to="/auth" onClick={closeMenus}><Icon name="userCircle" size={17} />Sign in to TaxSaathi</Link>}
+        </div>
+      </aside>
       <main><Outlet /></main>
       <footer className="public-footer">
         <div className="container-wide footer-grid">
