@@ -38,6 +38,7 @@ import { rateLimit } from '../lib/rate-limit.mjs';
 import { runWorkflowReminders } from '../lib/workflow.mjs';
 import { recordAudit } from '../lib/audit.mjs';
 import { permissionCatalogRows } from '../lib/rbac.mjs';
+import { dispatchWebPushNotifications, getVapidPublicKey, isTrustedPushEndpoint, isWebPushConfigured, normalizeWebPushSubscription } from '../lib/web-push.mjs';
 
 const router = express.Router();
 const otpStore = new Map();
@@ -519,8 +520,8 @@ async function notificationRows(store, userId, limit = 40, auth = null) {
 }
 
 async function notify(store, { userId = null, title, message, severity = 'info', url = '', kind = 'system', orderId = null }) {
-  return store.insert('notifications', {
-    uid: `mern-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  const notification = await store.insert('notifications', {
+    uid: 'mern-' + Date.now() + '-' + Math.random().toString(16).slice(2),
     user_id: userId,
     title,
     message,
@@ -536,6 +537,8 @@ async function notify(store, { userId = null, title, message, severity = 'info',
     created_at: isoNow(),
     updated_at: isoNow()
   });
+  dispatchWebPushNotifications(store, { userId, title, message, severity, url, orderId }).catch(() => {});
+  return notification;
 }
 
 async function scopedOrder(store, request, id) {
@@ -1931,6 +1934,43 @@ router.post('/auth/change-password', authRequired((request) => request.app.local
   await request.app.locals.store.update('users', { id: Number(current.id) }, { password_hash: await bcrypt.hash(newPassword, 12), updated_at: isoNow() });
   await recordAudit(request.app.locals.store, request, { action: 'user.password.changed', resourceType: 'user', resourceId: current.id });
   response.json({ ok: true, message: 'Password changed successfully.' });
+}));
+
+router.get('/notifications/push-public-key', (_request, response) => {
+  response.json({ ok: true, enabled: isWebPushConfigured(), public_key: getVapidPublicKey() });
+});
+
+router.post('/notifications/push-subscription', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const subscription = normalizeWebPushSubscription(request.body.subscription || request.body);
+  if (!subscription) return responseError(response, 'A valid browser push subscription is required.', 422);
+  const userId = Number(request.auth.user.id);
+  const existing = await store.findOne('user_push_subscriptions', { endpoint: subscription.endpoint });
+  const payload = {
+    user_id: userId,
+    endpoint: subscription.endpoint,
+    keys: subscription.keys,
+    user_agent: String(request.headers['user-agent'] || '').slice(0, 500),
+    last_seen_at: isoNow(),
+    updated_at: isoNow()
+  };
+  let row;
+  let created = false;
+  if (existing && Number(existing.user_id) === userId) {
+    row = await store.update('user_push_subscriptions', { id: existing.id }, payload);
+  } else {
+    if (existing?.id) await store.remove('user_push_subscriptions', { id: existing.id });
+    row = await store.insert('user_push_subscriptions', { ...payload, created_at: isoNow() });
+    created = true;
+  }
+  response.status(created ? 201 : 200).json({ ok: true, subscription: { id: row?.id || null, last_seen_at: row?.last_seen_at || payload.last_seen_at } });
+}));
+
+router.delete('/notifications/push-subscription', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
+  const endpoint = String(request.body.endpoint || request.body.subscription?.endpoint || request.query.endpoint || '').trim();
+  if (!isTrustedPushEndpoint(endpoint)) return responseError(response, 'A valid browser push endpoint is required.', 422);
+  await request.app.locals.store.remove('user_push_subscriptions', { user_id: Number(request.auth.user.id), endpoint });
+  response.json({ ok: true });
 }));
 
 router.post('/notifications/push-token', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
