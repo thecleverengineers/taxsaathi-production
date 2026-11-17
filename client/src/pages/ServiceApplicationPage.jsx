@@ -35,6 +35,7 @@ export default function ServiceApplicationPage() {
   const { user } = useAuth();
   const draftKey = `taxsaathi-apply-draft:${slug}`;
   const draft = readDraft(draftKey);
+  const submissionKey = draft.idempotency_key || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
   const [data, setData] = useState(null);
   const [form, setForm] = useState({
     customer_name: draft.customer_name || user?.name || '',
@@ -89,7 +90,7 @@ export default function ServiceApplicationPage() {
   }
 
   function saveDraft() {
-    sessionStorage.setItem(draftKey, JSON.stringify({ ...form, additional_notes: additionalNotes, client_id: chosenClientId }));
+    sessionStorage.setItem(draftKey, JSON.stringify({ ...form, additional_notes: additionalNotes, client_id: chosenClientId, idempotency_key: submissionKey }));
   }
 
   function goToAuth(path = '/auth') {
@@ -168,6 +169,7 @@ export default function ServiceApplicationPage() {
         body: {
           service_id: service.id,
           client_id: chosenClientId ? Number(chosenClientId) : null,
+          idempotency_key: submissionKey,
           financial_year: '2026-27',
           notes: [contactNotes, additionalNotes.trim()].filter(Boolean).join('\n\n'),
           customer_name: form.customer_name.trim(),
@@ -187,9 +189,12 @@ export default function ServiceApplicationPage() {
       }
       sessionStorage.removeItem(draftKey);
       const isPartner = ['partner', 'partners'].includes(String(user.role?.slug || '').toLowerCase());
-      navigate(isPartner ? `/partner/jobs/${orderId}` : `/client/orders/${orderId}`, {
+      const needsPayment = !isPartner && result.order.payment_first && result.order.status === 'awaiting_payment';
+      navigate(isPartner ? `/partner/jobs/${orderId}` : needsPayment ? `/client/orders/${orderId}/pay` : `/client/orders/${orderId}`, {
         replace: true,
-        state: { message: `${result.order.order_no || 'Your job'} was submitted. The admin will assign a staff member or partner, and payment will be available after the completed work is uploaded.` }
+        state: { message: needsPayment
+          ? `${result.order.order_no || 'Your order'} was created. Complete payment to activate processing.`
+          : `${result.order.order_no || 'Your job'} was submitted for review.` }
       });
     } catch (error) {
       feedback(error.message);
