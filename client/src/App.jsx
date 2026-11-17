@@ -48,6 +48,7 @@ export default function App() {
 
     <Route element={<Protected><DashboardLayout /></Protected>}>
       <Route path="/dashboard" element={<DashboardHomePage />} />
+      <Route path="/profile" element={<ProfilePage />} />
       <Route path="/client/orders" element={<Protected roles={['client']}><OrdersPage /></Protected>} />
       <Route path="/client/orders/:id" element={<Protected roles={['client']}><OrderDetailPage /></Protected>} />
       <Route path="/client/orders/:id/pay" element={<Protected roles={['client']}><PaymentPage /></Protected>} />

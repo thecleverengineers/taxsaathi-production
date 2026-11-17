@@ -2386,3 +2386,25 @@ h1, h2, h3, strong { letter-spacing: -.025em; }
   font-size: 10px;
   line-height: 1.45;
 }
+/* Account profile dropdown */
+.profile-menu-wrap { position: relative; }
+.profile-chip { appearance: none; border: 0; border-radius: 999px; padding: 4px 7px; background: transparent; cursor: pointer; font: inherit; transition: background .18s ease; }
+.profile-chip:hover, .profile-chip[aria-expanded="true"] { background: rgba(255,255,255,.12); }
+.profile-chip:focus-visible { outline: 2px solid #8de4d2; outline-offset: 2px; }
+.profile-chip .avatar { overflow: hidden; border: 1px solid rgba(255,255,255,.22); }
+.profile-menu { position: absolute; top: calc(100% + 10px); right: 0; z-index: 55; width: min(280px, calc(100vw - 24px)); padding: 7px; border: 1px solid #e4ece8; border-radius: 17px; color: #17322f; background: #fff; box-shadow: 0 18px 48px rgba(15, 42, 37, .18); }
+.profile-menu-head { margin-bottom: 5px; padding: 11px 12px 12px; border-bottom: 1px solid #edf2ef; }
+.profile-menu-head strong { display: block; overflow: hidden; color: #17322f; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.profile-menu-head small { display: block; margin-top: 4px; overflow: hidden; color: #71837e; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.profile-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 11px; border: 0; border-radius: 11px; color: #35544c; background: transparent; font: inherit; font-size: 11px; font-weight: 750; text-align: left; text-decoration: none; cursor: pointer; }
+.profile-menu-item:hover, .profile-menu-item:focus-visible { color: #0e7668; background: #f1f8f5; outline: none; }
+.profile-menu-item svg { flex: 0 0 auto; color: #62877d; }
+.profile-menu-item.danger { color: #b42348; }
+.profile-menu-item.danger svg { color: inherit; }
+@media (max-width: 760px) {
+  .header-actions { gap: 8px; }
+  .profile-chip { min-width: 42px; min-height: 42px; justify-content: center; gap: 4px; padding: 4px; }
+  .profile-chip .avatar.small { width: 34px; height: 34px; border-color: #d5e5df; color: #0b7568; background: #e4f1ed; font-size: 12px; }
+  .profile-chip .profile-name { display: none; }
+  .profile-menu { top: calc(100% + 8px); right: -4px; }
+}
