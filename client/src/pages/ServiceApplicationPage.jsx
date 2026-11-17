@@ -44,6 +44,8 @@ export default function ServiceApplicationPage() {
   });
   const [additionalNotes, setAdditionalNotes] = useState(draft.additional_notes || '');
   const [selectedRequirement, setSelectedRequirement] = useState('');
+  const [partnerClients, setPartnerClients] = useState([]);
+  const [chosenClientId, setChosenClientId] = useState(draft.client_id || '');
   const [documents, setDocuments] = useState([]);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('danger');
@@ -64,6 +66,11 @@ export default function ServiceApplicationPage() {
     }));
   }, [user]);
 
+  useEffect(() => {
+    if (!['partner', 'partners'].includes(String(user?.role?.slug || '').toLowerCase())) return;
+    api('/workflow/clients').then((response) => setPartnerClients(response.clients || [])).catch(() => setPartnerClients([]));
+  }, [user?.id, user?.role?.slug]);
+
   if (!data) return <PageLoader label="Loading application form…" />;
   if (!data.service) return <div className="empty-state large"><h3>Service not found.</h3><Link className="button dark" to="/services">Back to services</Link></div>;
 
@@ -82,7 +89,7 @@ export default function ServiceApplicationPage() {
   }
 
   function saveDraft() {
-    sessionStorage.setItem(draftKey, JSON.stringify({ ...form, additional_notes: additionalNotes }));
+    sessionStorage.setItem(draftKey, JSON.stringify({ ...form, additional_notes: additionalNotes, client_id: chosenClientId }));
   }
 
   function goToAuth(path = '/auth') {
@@ -160,6 +167,7 @@ export default function ServiceApplicationPage() {
         method: 'POST',
         body: {
           service_id: service.id,
+          client_id: chosenClientId ? Number(chosenClientId) : null,
           financial_year: '2026-27',
           notes: [contactNotes, additionalNotes.trim()].filter(Boolean).join('\n\n'),
           customer_name: form.customer_name.trim(),
@@ -222,6 +230,23 @@ export default function ServiceApplicationPage() {
         </aside>
 
         <form className="application-form-card" onSubmit={submitOrder}>
+          {['partner','partners'].includes(String(user?.role?.slug || '').toLowerCase()) && <div className="workflow-inline-form">
+            <label>Linked client (optional)
+              <select className="input" value={chosenClientId} onChange={(event) => {
+                const selected = event.target.value;
+                setChosenClientId(selected);
+                const client = partnerClients.find((item) => String(item.id) === selected);
+                if (client) setForm((previous) => ({
+                  ...previous, customer_name: client.name || previous.customer_name,
+                  mobile: client.phone || previous.mobile, email: client.email || previous.email
+                }));
+              }}>
+                <option value="">Enter new client details manually</option>
+                {partnerClients.map((client) => <option key={client.id} value={client.id}>{client.name}{client.company_name ? ' · ' + client.company_name : ''}</option>)}
+              </select>
+            </label>
+            <small>Manage your records in the <Link to="/partner/clients">partner client directory</Link>.</small>
+          </div>}
           <div className="application-form-head">
             <span className="application-step">STEP 1</span>
             <h1>Submit job details</h1>
