@@ -11,6 +11,8 @@ const editorialSlides = [
   { eyebrow: 'Integrated workflow', title: 'Built for trust, speed, and scale.', text: 'Keep services, orders, uploads, reviews, and operational updates moving through one reliable workspace.', image: '/legacy-assets/uploads/service-banners/banner_20260519134532_535851726f9f.png' }
 ];
 
+const emptyHomeData = { services: [], featured: [], categories: [], faqs: [], testimonials: [], settings: {} };
+
 function LandingServiceCard({ service }) {
   const image = service.icon_url || service.category?.image_url;
   return (
@@ -33,13 +35,13 @@ function LandingServiceCard({ service }) {
 }
 
 export default function HomePage() {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(emptyHomeData);
   const [slide, setSlide] = useState(0);
 
   useEffect(() => {
     api('/public/home')
-      .then(setData)
-      .catch(() => setData({ services: [], featured: [], categories: [], faqs: [], testimonials: [], settings: {} }));
+      .then((payload) => setData(payload && typeof payload === 'object' ? payload : emptyHomeData))
+      .catch(() => setData(emptyHomeData));
   }, []);
 
   useEffect(() => {
