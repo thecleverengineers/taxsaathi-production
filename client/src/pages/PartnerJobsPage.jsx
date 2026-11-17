@@ -21,7 +21,7 @@ export default function PartnerJobsPage() {
   if (!orders) return <PageLoader label="Loading service jobs…" />;
 
   return <div className="workspace-page">
-    <PageIntro eyebrow="Partner workspace" title="Service jobs" text="Submit client work, follow staff progress, reply to questions, and access approved deliverables." actions={<Link className="button dark" to="/services">Submit a job <Icon name="plus" size={16} /></Link>} />
+    <PageIntro eyebrow="Partner workspace" title="Service jobs" text="Submit client work, follow the staff member or partner assigned to each job, reply to questions, and access deliverables after admin approval." actions={<Link className="button dark" to="/services">Submit a job <Icon name="plus" size={16} /></Link>} />
     <div className="filter-panel">
       <div className="search-field compact"><Icon name="search" size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search job, service, or client…" /></div>
     </div>
