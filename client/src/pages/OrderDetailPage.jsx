@@ -28,6 +28,14 @@ export default function OrderDetailPage({ partner = false, job = false }) {
   const [assignmentSaving, setAssignmentSaving] = useState(false);
   const [approvalSaving, setApprovalSaving] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [planning, setPlanning] = useState({ priority: 'normal', due_date: '', internal_instructions: '' });
+  const [planningSaving, setPlanningSaving] = useState(false);
+  const [internalNotes, setInternalNotes] = useState([]);
+  const [noteText, setNoteText] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [revisions, setRevisions] = useState([]);
+  const [revisionReason, setRevisionReason] = useState('');
+  const [revisionSaving, setRevisionSaving] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [messageSaving, setMessageSaving] = useState(false);
   const [notice, setNotice] = useState(location.state?.message || '');
@@ -51,6 +59,16 @@ export default function OrderDetailPage({ partner = false, job = false }) {
     if (canReview) api('/admin/assignees').then((payload) => setAssignees(payload.assignees || [])).catch(() => setAssignees([]));
   }, [canReview]);
 
+  useEffect(() => {
+    api(`/workflow/orders/${id}/plan`).then((r) => setPlanning({
+      priority: r.plan?.priority || 'normal',
+      due_date: r.plan?.due_date?.slice(0, 10) || '',
+      internal_instructions: r.plan?.internal_instructions || ''
+    })).catch(() => {});
+    api(`/workflow/orders/${id}/revisions`).then((r) => setRevisions(r.revisions || [])).catch(() => setRevisions([]));
+    if (isStaff) api(`/workflow/orders/${id}/internal-notes`).then((r) => setInternalNotes(r.notes || [])).catch(() => setInternalNotes([]));
+  }, [id, isStaff]);
+
   if (order === null) return <PageLoader label="Loading order…" />;
   if (!order) return <EmptyState title="Order not found." action={<Link className="button dark" to={listPath}>Back to orders</Link>} />;
 
@@ -61,7 +79,7 @@ export default function OrderDetailPage({ partner = false, job = false }) {
   const paymentProofUrl = partner ? `/api/partner/orders/${id}/payment-proof` : `/api/orders/${id}/payment-proof`;
   const canWork = Boolean(order && (canReview || Number(order.assigned_user_id) === Number(user?.id)));
   const canPay = Boolean(order && (Number(order.submitted_by_user_id) === Number(user?.id) || role === 'client' && Number(order.client_id) === Number(user?.client_id) || ['partner', 'partners'].includes(role) && Number(order.partner_id) === Number(user?.partner_id || user?.id)));
-  const visibleDocuments = (order.documents || []).filter((document) => isStaff || document.source !== 'staff' || Boolean(document.is_client_visible));
+  const visibleDocuments = (order.documents || []).filter((document) => isStaff || Boolean(document.is_client_visible));
   const noticeIsSuccess = /updated|uploaded|submitted|applied|copied|recorded|created|saved/i.test(notice);
 
   async function updateStatus() {
@@ -77,6 +95,54 @@ export default function OrderDetailPage({ partner = false, job = false }) {
   async function approveDeliverable() {
     setApprovalSaving(true);
     try { const result = await api(`/orders/${id}/approve`, { method: 'POST' }); setOrder(result.order); setStatus(result.order.status); setNotice('Deliverable approved and released to the customer.'); } catch (error) { setNotice(error.message); } finally { setApprovalSaving(false); }
+  }
+
+  async function savePlanning(event) {
+    event.preventDefault(); setPlanningSaving(true);
+    try {
+      const result = await api(`/workflow/orders/${id}/plan`, {
+        method: 'PATCH', body: { priority: planning.priority, due_date: planning.due_date || null, internal_instructions: planning.internal_instructions }
+      });
+      setPlanning((current) => ({ ...current, ...result.plan }));
+      setOrder((current) => ({ ...current, priority: result.plan.priority, due_date: result.plan.due_date }));
+      setNotice('Task plan updated.');
+    } catch (error) { setNotice(error.message); } finally { setPlanningSaving(false); }
+  }
+
+  async function addInternalNote(event) {
+    event.preventDefault(); if (!noteText.trim()) return; setNoteSaving(true);
+    try {
+      const result = await api(`/workflow/orders/${id}/internal-notes`, { method: 'POST', body: { note: noteText.trim() } });
+      setInternalNotes((items) => [...items, result.note]); setNoteText(''); setNotice('Private note saved.');
+    } catch (error) { setNotice(error.message); } finally { setNoteSaving(false); }
+  }
+
+  async function sendRevisionRequest(event, adminReturn = false) {
+    event.preventDefault(); if (!revisionReason.trim()) return; setRevisionSaving(true);
+    try {
+      const result = await api(`/workflow/orders/${id}/${adminReturn ? 'return' : 'revision-request'}`, {
+        method: 'POST', body: { reason: revisionReason.trim() }
+      });
+      setRevisions((items) => [result.revision, ...items]); setRevisionReason('');
+      if (adminReturn) {
+        const refreshed = await api(`/orders/${id}`);
+        setOrder(refreshed.order); setStatus(refreshed.order.status);
+      }
+      setNotice(adminReturn ? 'Deliverable returned to staff for revision.' : 'Revision request submitted for admin review.');
+    } catch (error) { setNotice(error.message); } finally { setRevisionSaving(false); }
+  }
+
+  async function decideRevision(revision, decision) {
+    setRevisionSaving(true);
+    try {
+      const result = await api(`/workflow/orders/${id}/revisions/${revision.id}/decision`, {
+        method: 'POST', body: { decision }
+      });
+      setRevisions((items) => items.map((item) => item.id === revision.id ? result.revision : item));
+      const refreshed = await api(`/orders/${id}`);
+      setOrder(refreshed.order); setStatus(refreshed.order.status);
+      setNotice('Revision request ' + decision + '.');
+    } catch (error) { setNotice(error.message); } finally { setRevisionSaving(false); }
   }
 
   async function sendMessage(event) {
@@ -141,6 +207,51 @@ export default function OrderDetailPage({ partner = false, job = false }) {
     {notice && <div className={`form-message ${noticeIsSuccess ? 'success' : 'danger'}`}>{notice}</div>}
     <div className="order-detail-grid"><div className="detail-main">
       <section className="panel"><div className="panel-heading"><div><span className="eyebrow">Workflow</span><h3>Progress and status</h3></div>{isStaff && !partner && <div className="inline-actions"><select className="input compact-input" value={status} onChange={(event) => setStatus(event.target.value)}>{canReview && <option value="submitted">Submitted</option>}<option value="work_in_progress">Work in progress</option>{canReview && <><option value="rejected">Rejected</option><option value="cancelled">Cancelled</option></>}</select><button className="button dark small" onClick={updateStatus}>Update</button></div>}</div><div className="workflow-line"><div className={['submitted', 'assigned', 'work_in_progress', 'awaiting_approval', 'completed'].includes(order.status || order.order_status) ? 'done' : ''}><span>1</span><strong>Submitted</strong></div><i /><div className={['assigned', 'work_in_progress', 'awaiting_approval', 'completed'].includes(order.status || order.order_status) ? 'done' : ''}><span>2</span><strong>Assigned</strong></div><i /><div className={['work_in_progress', 'awaiting_approval', 'completed'].includes(order.status || order.order_status) ? 'done' : ''}><span>3</span><strong>Work submitted</strong></div><i /><div className={(order.status || order.order_status) === 'completed' ? 'done' : ''}><span>4</span><strong>Approved</strong></div></div>{canReview && <div className="inline-actions" style={{ marginTop: 18 }}><select className="input compact-input" value={assignedUserId} onChange={(event) => setAssignedUserId(event.target.value)}><option value="">Select staff member or partner</option>{assignees.map((person) => <option key={person.id} value={person.id}>{person.name} · {person.role}</option>)}</select><button className="button dark small" onClick={assignJob} disabled={!assignedUserId || assignmentSaving}>{assignmentSaving ? 'Assigning…' : 'Assign job'}</button></div>}{canReview && order.status === 'awaiting_approval' && <div className="inline-actions" style={{ marginTop: 14 }}><button className="button primary small" onClick={approveDeliverable} disabled={approvalSaving}>{approvalSaving ? 'Approving…' : 'Approve and release deliverable'}</button><small>Payment must be verified or marked for later first.</small></div>}</section>
+      <section className="panel">
+        <div className="panel-heading"><div><span className="eyebrow">Scheduling</span><h3>Priority & deadline</h3></div>
+          <span className={'workflow-priority ' + planning.priority}>{planning.priority}</span></div>
+        {canReview ? <form className="workflow-inline-form" onSubmit={savePlanning}>
+          <div className="inline-actions">
+            <label>Priority <select className="input compact-input" value={planning.priority} onChange={(e) => setPlanning({...planning,priority:e.target.value})}>
+              <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option>
+            </select></label>
+            <label>Deadline <input className="input compact-input" type="date" value={planning.due_date} onChange={(e) => setPlanning({...planning,due_date:e.target.value})}/></label>
+          </div>
+          <label>Internal instructions (staff only) <textarea className="input" rows={3} maxLength={4000} value={planning.internal_instructions}
+            onChange={(e) => setPlanning({...planning,internal_instructions:e.target.value})}/></label>
+          <div><button className="button dark small" disabled={planningSaving}>{planningSaving?'Saving…':'Save task plan'}</button></div>
+        </form> : <div className="summary-line"><span>Deadline</span><strong>{planning.due_date ? dateLabel(planning.due_date) : 'Not set'}</strong></div>}
+        {!canReview && isStaff && planning.internal_instructions && <p className="workflow-help">{planning.internal_instructions}</p>}
+      </section>
+      <section className="panel">
+        <div className="panel-heading"><div><span className="eyebrow">Quality control</span><h3>Revision requests</h3></div></div>
+        {revisions.map((revision) => <div className="workflow-revision-card" key={revision.id}>
+          <strong>{revision.type === 'admin_return' ? 'Admin returned deliverable' : 'Correction request'}</strong>
+          <small>{revision.status} · {dateLabel(revision.created_at)}</small><p>{revision.reason}</p>
+          {canReview && revision.status === 'pending' && <div className="inline-actions">
+            <button type="button" className="button dark small" disabled={revisionSaving} onClick={() => decideRevision(revision,'approved')}>Approve</button>
+            <button type="button" className="button light small" disabled={revisionSaving} onClick={() => decideRevision(revision,'rejected')}>Decline</button>
+          </div>}
+        </div>)}
+        {((canReview && order.status === 'awaiting_approval') || (canPay && order.status === 'completed' && !canReview)) && <form className="workflow-inline-form" onSubmit={(event) => sendRevisionRequest(event,canReview)}>
+          <textarea className="input" rows={3} required minLength={5} maxLength={1000}
+            value={revisionReason} onChange={(event) => setRevisionReason(event.target.value)}
+            placeholder={canReview?'Explain what staff must revise…':'Describe the issue with the approved deliverable…'}/>
+          <div><button className="button light small" disabled={revisionSaving}>{revisionSaving?'Submitting…':canReview?'Return deliverable for revision':'Request correction'}</button></div>
+        </form>}
+        {!revisions.length && <p className="workflow-help">No revisions have been recorded.</p>}
+      </section>
+      {isStaff && canWork && <section className="panel">
+        <div className="panel-heading"><div><span className="eyebrow">Staff only</span><h3>Private internal notes</h3></div></div>
+        <p className="workflow-help">Only Admin and authorised assigned staff can view these notes.</p>
+        <div className="workflow-note-list">{internalNotes.map((note)=><div className="workflow-note-card" key={note.id}>
+          <strong>{note.author_name||'Staff'} <small>{dateLabel(note.created_at)}</small></strong><p>{note.text}</p>
+        </div>)}</div>
+        <form className="workflow-inline-form" onSubmit={addInternalNote}>
+          <textarea className="input" required maxLength={3000} value={noteText} onChange={(event)=>setNoteText(event.target.value)} placeholder="Staff notes, blockers, internal decisions…"/>
+          <div><button className="button dark small" disabled={noteSaving}>{noteSaving?'Saving…':'Add private note'}</button></div>
+        </form>
+      </section>}
       <section className="panel"><div className="panel-heading"><div><span className="eyebrow">Required records</span><h3>Documents</h3></div><div className="inline-actions">{canWork && !partner && ['assigned', 'work_in_progress', 'awaiting_approval'].includes(order.status) && <label className="button primary small upload-button"><Icon name="upload" size={15} />{outputUploading ? 'Delivering…' : 'Submit deliverable'}<input type="file" onChange={uploadOutput} disabled={outputUploading} /></label>}{!partner && <label className="button light small upload-button"><Icon name="upload" size={15} />{uploading ? 'Uploading…' : 'Upload file'}<input type="file" onChange={uploadFile} disabled={uploading} /></label>}</div></div>{visibleDocuments.length ? <div className="document-list">{visibleDocuments.map((document) => <div className="document-row" key={document.id}><span className="document-icon"><Icon name="file" size={17} /></span><div><strong>{document.label || document.original_name || document.title}</strong><small>{document.original_name} · {document.document_status || document.status || 'Submitted'}</small><span className="inline-actions">{document.download_url && <a className="text-link" href={document.download_url} target="_blank" rel="noreferrer">Open</a>}{!partner && (document.document_status === 'wrong' || document.source === 'client') && <label className="text-link">Replace<input type="file" hidden onChange={(event) => reuploadDocument(document, event)} /></label>}{isStaff && document.document_status !== 'pending_approval' && <><button className="text-link" type="button" onClick={() => markDocument(document, 'active')}>Accept</button><button className="text-link danger-text" type="button" onClick={() => markDocument(document, 'wrong')}>Mark wrong</button></>}</span></div><StatusBadge value={document.document_status || document.status || 'submitted'} /></div>)}</div> : <EmptyState icon="file" title="No documents uploaded yet." text="Upload a file when your service team requests it." />}</section>
       {!partner && <section className="panel"><div className="panel-heading"><div><span className="eyebrow">Payments</span><h3>Payment records</h3></div><StatusBadge value={order.payment_status} /></div>{order.payments?.length ? <div className="payment-list">{order.payments.map((payment) => <div className="payment-row" key={payment.id}><span><strong>{money(payment.amount)}</strong><small>{payment.method} · {payment.reference_no || 'No reference'} · {payment.status || 'Recorded'}</small></span><small>{dateLabel(payment.received_at || payment.created_at)}</small></div>)}</div> : <EmptyState icon="wallet" title="No payment has been recorded." text="Use Pay now to submit your transaction proof." />}</section>}
       {partner && order.payment_reference && <section className="panel"><div className="panel-heading"><div><span className="eyebrow">Payment submission</span><h3>Transaction proof</h3></div><StatusBadge value={order.payment_status} /></div><div className="payment-submission-summary"><div><small>Transaction ID</small><strong>{order.payment_reference}</strong></div>{order.payment_proof && <a className="button light small" href={paymentProofUrl} target="_blank" rel="noreferrer"><Icon name="file" size={14} /> View screenshot</a>}</div></section>}
