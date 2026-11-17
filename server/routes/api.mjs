@@ -1022,7 +1022,17 @@ router.post('/orders', ...roleGuard(request => request.app.locals.store, 'admin'
   if (!service) return responseError(response, 'Choose a valid service.');
   const submittingRole = roleSlug(request.auth);
   const isPartnerSubmission = ['partner', 'partners'].includes(submittingRole);
-  const clientId = Number(request.auth.user.client_id || 0);
+  let clientId = Number(request.auth.user.client_id || 0);
+  const requestedClientId = numericId(request.body.client_id);
+  if (isPartnerSubmission && requestedClientId) {
+    const ownedClient = await store.findOne('clients', { id: requestedClientId, ...partnerOwnerFilter(request.auth) });
+    if (!ownedClient) return responseError(response, 'Choose a client from your authorised directory.', 403);
+    clientId = Number(ownedClient.id);
+  } else if (['admin', 'manager'].includes(submittingRole) && requestedClientId) {
+    const selectedClient = await store.findOne('clients', { id: requestedClientId });
+    if (!selectedClient) return responseError(response, 'Selected client does not exist.', 404);
+    clientId = Number(selectedClient.id);
+  }
   if (!isPartnerSubmission && !clientId) return responseError(response, 'A client profile is required before placing an order.');
   const fee = asNumber(service.filing_fee);
   const customerName = String(request.body.customer_name || request.auth.user.name || '').trim();
@@ -1334,7 +1344,7 @@ router.post('/orders/:id/documents', authRequired((request) => request.app.local
     storage: stored.storage,
     mime_type: stored.mime_type,
     size_bytes: stored.size_bytes,
-    is_client_visible: 1,
+    is_client_visible: ['client', 'partner', 'partners'].includes(submitterRole) ? 1 : 0,
     uploaded_by: request.auth.user.id,
     created_at: isoNow(),
     document_status: 'submitted'
@@ -2059,13 +2069,14 @@ router.post('/orders/:id/documents/:documentId/reupload', authRequired((request)
   const previous = await store.findOne('order_documents', { id: Number(request.params.documentId), order_id: Number(request.params.id) });
   if (!order || !previous) return responseError(response, 'Order document not found or access is not allowed.', 404);
   if (previous.source === 'staff' && ['pending_approval', 'delivered'].includes(String(previous.document_status || ''))) return responseError(response, 'Final deliverables must be resubmitted through the staff output action.', 403);
+  if (previous.source === 'staff' && !isStaff(request.auth)) return responseError(response, 'Staff working documents are private.', 403);
   if (!request.file) return responseError(response, 'Choose a replacement file.');
   if (roleSlug(request.auth) === 'client' && !asBool(previous.is_client_visible)) return responseError(response, 'This document cannot be replaced by the client.', 403);
   const stored = await saveUpload(store, request.file, { folder: 'documents', metadata: { kind: 'document-reupload', order_id: order.id, replaces_document_id: previous.id, uploaded_by: request.auth.user.id } });
   const replacement = await store.insert('order_documents', {
     order_id: order.id,
     requirement_id: previous.requirement_id || null,
-    source: roleSlug(request.auth) === 'client' ? 'client' : 'staff',
+    source: ['client', 'partner', 'partners'].includes(roleSlug(request.auth)) ? roleSlug(request.auth) : 'staff',
     label: String(request.body.label || previous.label || request.file.originalname),
     original_name: stored.original_name,
     stored_name: stored.stored_name,
