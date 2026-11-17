@@ -6,7 +6,7 @@ import Icon from '../components/Icons';
 import { EmptyState, OrderRow, PageLoader } from '../components/Ui';
 import { money, statusLabel } from '../lib/format';
 
-const chartColors = ['#087f73', '#f59e0b', '#e83e72', '#8b7cf6', '#39b779', '#2c6f88', '#d97706'];
+const chartColors = ['#102e55', '#cb963d', '#376696', '#e4bd69', '#6d8aab', '#947441', '#294a73'];
 
 function donutStyle(items) {
   const total = items.reduce((sum, item) => sum + Number(item.total || 0), 0);
