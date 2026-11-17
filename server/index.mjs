@@ -25,9 +25,18 @@ function prepareClientIndex(index) {
       const loadApplication = () => import(${JSON.stringify(entry)}).catch((error) => console.error('TaxSaathi bootstrap failed.', error));
       if (!('serviceWorker' in navigator)) return loadApplication();
       navigator.serviceWorker.getRegistrations().then(async (registrations) => {
-        if (!registrations.length) return loadApplication();
-        await Promise.all(registrations.map((registration) => registration.unregister()));
-        window.location.reload();
+        const isPushWorker = (registration) => [registration.active, registration.waiting, registration.installing]
+          .some((worker) => {
+            try { return new URL(worker.scriptURL).pathname === '/push-sw.js'; } catch { return false; }
+          });
+        const preservedPushWorker = registrations.some(isPushWorker);
+        const staleRegistrations = registrations.filter((registration) => !isPushWorker(registration));
+        await Promise.all(staleRegistrations.map((registration) => registration.unregister()));
+        if (staleRegistrations.length && !preservedPushWorker) {
+          window.location.reload();
+          return;
+        }
+        loadApplication();
       }).catch(loadApplication);
     })();
   </script>`;
@@ -90,6 +99,13 @@ app.get('/sitemap.xml', async (_request, response) => {
   response.type('application/xml').send(
     `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((url) => `<url><loc>${base}${url}</loc></url>`).join('')}</urlset>`
   );
+});
+
+app.get('/push-sw.js', (_request, response, next) => {
+  const pushWorkerPath = path.join(clientDist, 'push-sw.js');
+  if (!fs.existsSync(pushWorkerPath)) return next();
+  response.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  return response.sendFile(pushWorkerPath);
 });
 
 if (fs.existsSync(clientDist)) {
