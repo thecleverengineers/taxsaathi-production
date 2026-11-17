@@ -7,16 +7,16 @@ import { statusLabel } from '../lib/format';
 
 const nav = {
   admin: [
-    ['Dashboard', '/dashboard', 'dashboard'], ['Orders', '/admin/orders', 'orders'], ['Services', '/admin/services', 'briefcase'], ['Users', '/admin/users', 'users'], ['Partners', '/admin/partners', 'users'], ['Executives', '/admin/executive', 'users'], ['Operations', '/admin/operations', 'activity'], ['SEO & marketing', '/admin/marketing', 'trending'], ['Intelligence lab', '/admin/intelligence', 'sparkles'], ['Reports', '/admin/reports', 'bar'], ['Audit logs', '/admin/audit', 'shield'], ['Application management', '/admin/management', 'settings'], ['Coupons & payments', '/admin/payment-settings', 'wallet'], ['Notifications', '/notifications', 'bell'], ['Notification workflows', '/admin/notification-workflows', 'bell'], ['Content & settings', '/admin/content', 'settings']
+    ['Dashboard', '/dashboard', 'dashboard'], ['Task board', '/admin/workflow', 'activity'], ['Orders', '/admin/orders', 'orders'], ['Clients', '/admin/clients', 'users'], ['Staff workload', '/admin/staff', 'users'], ['Services', '/admin/services', 'briefcase'], ['Users', '/admin/users', 'users'], ['Partners', '/admin/partners', 'users'], ['Executives', '/admin/executive', 'users'], ['Operations', '/admin/operations', 'activity'], ['SEO & marketing', '/admin/marketing', 'trending'], ['Intelligence lab', '/admin/intelligence', 'sparkles'], ['Reports', '/admin/reports', 'bar'], ['Audit logs', '/admin/audit', 'shield'], ['Application management', '/admin/management', 'settings'], ['Coupons & payments', '/admin/payment-settings', 'wallet'], ['Notifications', '/notifications', 'bell'], ['Notification workflows', '/admin/notification-workflows', 'bell'], ['Content & settings', '/admin/content', 'settings']
   ],
   manager: [
-    ['Dashboard', '/dashboard', 'dashboard'], ['Orders', '/admin/orders', 'orders'], ['Partners', '/admin/partners', 'users'], ['Operations', '/admin/operations', 'activity'], ['Reports', '/admin/reports', 'bar'], ['Audit logs', '/admin/audit', 'shield'], ['Notifications', '/notifications', 'bell'], ['Support inbox', '/support', 'support']
+    ['Dashboard', '/dashboard', 'dashboard'], ['Task board', '/admin/workflow', 'activity'], ['Orders', '/admin/orders', 'orders'], ['Clients', '/admin/clients', 'users'], ['Staff workload', '/admin/staff', 'users'], ['Partners', '/admin/partners', 'users'], ['Operations', '/admin/operations', 'activity'], ['Reports', '/admin/reports', 'bar'], ['Audit logs', '/admin/audit', 'shield'], ['Notifications', '/notifications', 'bell'], ['Support inbox', '/support', 'support']
   ],
   executive: [
-    ['Dashboard', '/dashboard', 'dashboard'], ['Assigned orders', '/admin/orders', 'orders'], ['Reports', '/admin/reports', 'bar'], ['Payouts', '/executive/payouts', 'wallet'], ['Notifications', '/notifications', 'bell']
+    ['Dashboard', '/dashboard', 'dashboard'], ['My task board', '/staff/workflow', 'activity'], ['Assigned orders', '/admin/orders', 'orders'], ['Reports', '/admin/reports', 'bar'], ['Payouts', '/executive/payouts', 'wallet'], ['Notifications', '/notifications', 'bell']
   ],
-  partners: [['Dashboard', '/partner/dashboard', 'dashboard'], ['Partner orders', '/partner/orders', 'orders'], ['Services', '/services', 'briefcase'], ['Profile', '/partner/profile', 'userCircle']],
-  partner: [['Dashboard', '/partner/dashboard', 'dashboard'], ['Partner orders', '/partner/orders', 'orders'], ['Services', '/services', 'briefcase'], ['Profile', '/partner/profile', 'userCircle']],
+  partners: [['Dashboard', '/partner/dashboard', 'dashboard'], ['Partner orders', '/partner/orders', 'orders'], ['Clients', '/partner/clients', 'users'], ['Service jobs', '/partner/jobs', 'orders'], ['Services', '/services', 'briefcase'], ['Profile', '/partner/profile', 'userCircle']],
+  partner: [['Dashboard', '/partner/dashboard', 'dashboard'], ['Partner orders', '/partner/orders', 'orders'], ['Clients', '/partner/clients', 'users'], ['Service jobs', '/partner/jobs', 'orders'], ['Services', '/services', 'briefcase'], ['Profile', '/partner/profile', 'userCircle']],
   client: [['Dashboard', '/dashboard', 'dashboard'], ['My orders', '/client/orders', 'orders'], ['Services', '/services', 'briefcase'], ['Support', '/support', 'support'], ['Profile', '/client/profile', 'userCircle']]
 };
 

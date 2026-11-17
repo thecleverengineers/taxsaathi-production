@@ -11,6 +11,8 @@ import AuthPage from './pages/AuthPage';
 import DashboardHomePage from './pages/DashboardHomePage';
 import PartnerDashboardPage from './pages/PartnerDashboardPage';
 import PartnerJobsPage from './pages/PartnerJobsPage';
+import WorkflowBoardPage, { StaffWorkloadPage } from './pages/WorkflowBoardPage';
+import ClientDirectoryPage from './pages/ClientDirectoryPage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import PaymentPage from './pages/PaymentPage';
@@ -54,6 +56,7 @@ export default function App() {
       <Route path="/client/orders/:id/pay" element={<Protected roles={['client']}><PaymentPage /></Protected>} />
       <Route path="/client/profile" element={<Protected roles={['client']}><ProfilePage /></Protected>} />
       <Route path="/partner/dashboard" element={<Protected roles={['admin', 'manager', 'partner', 'partners']}><PartnerDashboardPage /></Protected>} />
+      <Route path="/partner/clients" element={<Protected roles={['admin','manager','partner','partners']}><ClientDirectoryPage /></Protected>} />
       <Route path="/partner/jobs" element={<Protected roles={['admin', 'manager', 'partner', 'partners']}><PartnerJobsPage /></Protected>} />
       <Route path="/partner/jobs/:id" element={<Protected roles={['admin', 'manager', 'partner', 'partners']}><OrderDetailPage job /></Protected>} />
       <Route path="/partner/jobs/:id/pay" element={<Protected roles={['admin', 'manager', 'partner', 'partners']}><PaymentPage job /></Protected>} />
@@ -63,6 +66,10 @@ export default function App() {
       <Route path="/partner/profile" element={<Protected roles={['partner', 'partners']}><ProfilePage /></Protected>} />
       <Route path="/support" element={<SupportPage />} />
       <Route path="/notifications" element={<AdminNotificationsPage />} />
+      <Route path="/admin/workflow" element={<Protected roles={['admin','manager']}><WorkflowBoardPage /></Protected>} />
+      <Route path="/staff/workflow" element={<Protected roles={['executive']}><WorkflowBoardPage /></Protected>} />
+      <Route path="/admin/clients" element={<Protected roles={['admin','manager']}><ClientDirectoryPage /></Protected>} />
+      <Route path="/admin/staff" element={<Protected roles={['admin','manager']}><StaffWorkloadPage /></Protected>} />
       <Route path="/admin/orders" element={<Protected roles={['admin', 'manager', 'executive']}><OrdersPage /></Protected>} />
       <Route path="/admin/orders/:id" element={<Protected roles={['admin', 'manager', 'executive']}><OrderDetailPage /></Protected>} />
       <Route path="/admin/users" element={<Protected roles={['admin', 'manager']}><AdminUsersPage /></Protected>} />

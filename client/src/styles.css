@@ -2448,3 +2448,31 @@ h1, h2, h3, strong { letter-spacing: -.025em; }
 @media(max-width:960px) { .public-nav-links { display:none !important; } .public-nav { flex-wrap:nowrap; gap:12px; } }
 @media(max-width:680px) { .public-nav { gap:10px; padding-inline:10px; } .public-sidebar-trigger { width:38px; height:38px; flex-basis:38px; border-radius:11px; } .brand-mark-link { gap:8px; } .public-sidebar-drawer { width:min(355px,calc(100vw - 32px)); } }
 @media(prefers-reduced-motion:reduce) { .public-sidebar-backdrop,.public-sidebar-drawer { transition:none; } }
+
+
+
+/* TaxSaathi multi-role operations pages */
+.workflow-stats { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px; }
+.workflow-panel {padding:14px;overflow:hidden;}
+.workflow-tools {display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:15px;}
+.workflow-tools .search-field {flex:1 1 240px;max-width:440px;}
+.workflow-priority {display:inline-block;padding:5px 9px;border-radius:99px;background:#e6eff8;color:#285276;font-size:10px;font-weight:800;text-transform:capitalize;}
+.workflow-priority.high {color:#915319;background:#fff2de;}
+.workflow-priority.urgent {color:#ac2344;background:#ffe9ee;}
+.workflow-priority.low {color:#376c49;background:#e8f7ed;}
+.workflow-overdue {color:#bd1945;font-weight:850;}
+.workflow-feedback {margin-bottom:15px;padding:11px 14px;border:1px solid #cbe1f3;border-radius:12px;background:#f1f9fe;color:#285475;font-size:12px;font-weight:650;}
+.workflow-modal {max-height:90dvh;overflow-y:auto;}
+.workflow-modal>label {display:grid;gap:6px;margin-bottom:12px;font-size:12px;font-weight:750;color:#405269;}
+.workflow-modal>label>input,.workflow-modal>label>select {min-height:42px;width:100%;padding:9px;border:1px solid #dae5ef;border-radius:10px;background:#fff;color:#172033;}
+.workflow-modal .inline-actions {justify-content:flex-end;margin-top:18px;}
+.workflow-help {color:#6a7d90;font-size:11px;line-height:1.55;}
+.workflow-note-list {display:grid;gap:8px;max-height:300px;overflow:auto;margin:12px 0;}
+.workflow-note-card,.workflow-revision-card {padding:11px 13px;border:1px solid #e3eaf2;border-radius:12px;background:#fafcff;margin-bottom:8px;}
+.workflow-note-card strong,.workflow-revision-card strong {font-size:12px;}
+.workflow-note-card small,.workflow-revision-card small {font-size:10px;color:#758699;}
+.workflow-note-card p,.workflow-revision-card p {white-space:pre-wrap;font-size:12px;line-height:1.5;margin:6px 0;}
+.workflow-inline-form {display:grid;gap:9px;margin-top:12px;}
+.workflow-inline-form textarea {min-height:75px;}
+@media(max-width:960px){.workflow-stats{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:680px){.workflow-panel{padding:10px;}.workflow-tools .search-field{max-width:none;flex-basis:100%;}.workflow-tools .compact-input{flex:1;min-width:0;}.workflow-tools .result-count{width:100%;text-align:right;}}
