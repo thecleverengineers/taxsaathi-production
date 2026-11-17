@@ -1,0 +1,384 @@
+/*
+ * Tax Saathi 2026 cross-application design system
+ * Applies to public services, applications, payments, portals, admin,
+ * partner, corporate/client and executive workspaces.
+ * Shared colors/typography/layout only; feature actions and APIs are unchanged.
+ */
+:root {
+  --ts-font: 'Open Sans', Arial, Helvetica, sans-serif;
+  --ts-navy-950: #06162f;
+  --ts-navy-900: #0a2245;
+  --ts-navy-800: #102e59;
+  --ts-navy-700: #194474;
+  --ts-gold-700: #a87424;
+  --ts-gold-600: #bd8731;
+  --ts-gold-500: #d3a449;
+  --ts-gold-300: #f2d58c;
+  --ts-ivory: #fbf9f4;
+  --ts-line: #e2e7ee;
+  --ink: #102848;
+  --muted: #64748b;
+  --faint: #8592a3;
+  --line: var(--ts-line);
+  --surface: #ffffff;
+  --surface-soft: #f6f8fb;
+  --blue: var(--ts-navy-800);
+  --blue-2: var(--ts-navy-700);
+  --cyan: var(--ts-gold-500);
+  --yellow: var(--ts-gold-500);
+  --shadow: 0 18px 45px rgba(8, 26, 57, .08);
+  --shadow-soft: 0 8px 25px rgba(8, 26, 57, .07);
+  font-family: var(--ts-font);
+  color-scheme: light;
+}
+html {font-family:var(--ts-font);font-size:16px;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body,#root {margin:0;min-width:0;min-height:100%;max-width:100%}
+body {font-family:var(--ts-font);color:var(--ink);background:var(--surface-soft)}
+:where(body,button,input,textarea,select,option,dialog) {font-family:var(--ts-font)}
+:where(button,input,textarea,select) {font-family:var(--ts-font)!important}
+:where(img,video,canvas,svg) {max-width:100%}
+:where(img,video) {height:auto}
+:where(h1,h2,h3,h4,h5,h6,p,small,strong,span,a,td,th) {overflow-wrap:break-word}
+:where(.public-site,.dashboard-app,.ts-home,.ts-auth-root) {font-family:var(--ts-font)}
+/* The logo artwork is preserved; only foreground copy uses Open Sans. */
+.ts-auth-root, .ts-home {font-family:var(--ts-font)!important}
+:where(.dashboard-main,.dashboard-content,.workspace-page,.public-site main,.public-site .container-wide,.panel,.content-card,.data-table,.table-scroll) {min-width:0}
+:where(.dashboard-app,.public-site) {max-width:100%;overflow-x:clip}
+:where(.dashboard-content,.public-site main) :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),textarea,select) {
+  max-width:100%;min-width:0;min-height:42px;border-color:#d6dee8;border-radius:11px;
+  color:var(--ts-navy-900);background-color:#fff;
+}
+:where(.dashboard-content,.public-site main) :where(input,textarea,select):focus-visible {
+  outline:2px solid var(--ts-gold-600);outline-offset:2px;
+}
+:where(.dashboard-content,.public-site main) :where(input,textarea,select)::placeholder {color:#8290a2}
+:where(.dashboard-content,.public-site main) :where(label) {min-width:0}
+:where(.dashboard-content,.public-site main) :where(button,a,[role="button"]):focus-visible {
+  outline:3px solid #d4a34b;outline-offset:3px;
+}
+/* Core buttons, links, chips and feedback; retain semantic error/success colors. */
+.button.primary,.service-card-action.apply,.public-site .nav-cta,
+.dashboard-app .button.primary,.dashboard-app .button.dark {
+  background:linear-gradient(112deg,#a77125 0%,#f4d581 48%,#c48c2b 100%);
+  color:#0b2548;border-color:#bc8a39;
+  box-shadow:0 8px 20px rgba(111,75,19,.15);
+}
+.button.primary:hover:not(:disabled),.service-card-action.apply:hover,.dashboard-app .button.dark:hover:not(:disabled){
+  color:#071f41;background:linear-gradient(115deg,#b27a28,#f9dd8d 49%,#cd9939);
+  transform:translateY(-1px);
+}
+.button.dark:not(.dashboard-app .button.dark),.button.ghost {
+  background:linear-gradient(125deg,#0c254a,#1a4572);color:#fff
+}
+.button.light,.button.outline,.button.secondary,.dashboard-app .button.light {
+  color:#183962;background:#fff;border-color:#d8dfeb;
+}
+:is(.public-site,.dashboard-app) :where(.eyebrow,.text-link,.text-button,.icon-link) {color:var(--ts-gold-700)}
+:is(.public-site,.dashboard-app) .filter-pills button.active,
+:is(.public-site,.dashboard-app) .admin-tabs .active {
+  color:#fff;border-color:#173e6b;background:linear-gradient(110deg,#0a2346,#214d7f)
+}
+:is(.public-site,.dashboard-app) .filter-pills button:not(.active) {
+  border-color:#dde3eb;background:#fff;color:#354a66;
+}
+:is(.public-site,.dashboard-app) .filter-pills button:hover {border-color:#b9944f}
+:is(.public-site,.dashboard-app) .status-badge {border-radius:999px}
+:is(.public-site,.dashboard-app) :where(.empty-state,.content-card,.panel,.apply-card,.calculator-card,.legal-card,.contact-form,.modal-card,.filter-panel,.table-scroll,.profile-grid>form) {
+  border-color:var(--ts-line);box-shadow:var(--shadow-soft);
+}
+:is(.public-site,.dashboard-app) :where(.page-intro h2,.panel-heading h2,.panel-heading h3,.section-heading h2,.page-banner h1) {
+  letter-spacing:-.035em;
+}
+:is(.public-site,.dashboard-app) :where(.form-message,.workflow-feedback) {border-radius:12px}
+/* Public routes: catalogue, service details, application, legal, support and payment. */
+.public-site.ts-brand-site {background:#fbfaf7;color:var(--ts-navy-900)}
+.ts-brand-site .ambient-orb.orb-one {background:#c89135}
+.ts-brand-site .ambient-orb.orb-two {background:#b69a5d}
+.ts-brand-site .public-header {
+  background:linear-gradient(180deg,#081b37f5,#0b2344f0);
+  border-bottom:1px solid #d8ae603f;backdrop-filter:blur(14px)
+}
+.ts-brand-site .public-nav {
+  min-width:0;color:#f8f0dc;border:1px solid #e8bc6863;
+  background:linear-gradient(110deg,#0b2449,#173c68 60%,#0b254b);
+  box-shadow:0 14px 34px rgba(5,17,39,.23);
+}
+.ts-brand-site .brand-mark-link {min-width:0}
+.ts-brand-site .brand-mark-link strong,.ts-brand-site .public-nav-link {color:#fff5df}
+.ts-brand-site .brand-mark-link small {color:#d3c6aa}
+.ts-brand-site .brand-logo-frame {border:1px solid #c89d50;border-radius:50%;background:#091d3e;overflow:hidden}
+.ts-brand-site .brand-logo-frame img {width:100%;height:100%;object-fit:contain;padding:0}
+.ts-brand-site .public-nav-link:hover,.ts-brand-site .public-nav-link.active {
+  color:#ffe2a0;background:#ffffff14
+}
+.ts-brand-site .public-sidebar-trigger {
+  color:#f4d684;border:1px solid #c09b5970;background:#ffffff10
+}
+.ts-brand-site .public-sidebar-trigger:hover,.ts-brand-site .public-sidebar-trigger[aria-expanded="true"] {
+  color:#ffdf93;background:#ffffff23;border-color:#e8bf6e
+}
+.ts-brand-site .public-sidebar-trigger:focus-visible,.ts-brand-site .public-sidebar-close:focus-visible {outline-color:#e6b356}
+.ts-brand-site .services-mega-menu,.ts-brand-site .public-sidebar-drawer {
+  border-color:#d6c29a;background:#fcfbf7;
+}
+.ts-brand-site .services-menu-head {background:#102e55;color:#fbe6b7}
+.ts-brand-site .services-category-thumb {background:#f2e6cd}
+.ts-brand-site .services-menu-view-all,.ts-brand-site .public-sidebar-categories-head a {color:#a67525}
+.ts-brand-site .public-sidebar-head {background:linear-gradient(110deg,#081b36,#1c4675);color:#fff}
+.ts-brand-site .public-sidebar-brand strong {color:#fff}
+.ts-brand-site .public-sidebar-brand small {color:#dbc896}
+.ts-brand-site .public-sidebar-link:hover,.ts-brand-site .public-sidebar-link.active {
+  color:#17385c;background:#f4e8cf
+}
+.ts-brand-site .public-sidebar-foot :where(a,button) {
+  background:linear-gradient(110deg,#c28d32,#f2d37b);color:#0d284b
+}
+.ts-brand-site .public-footer {
+  background:linear-gradient(120deg,#07182f,#0d2a52 72%,#143960);color:#dce5ef
+}
+.ts-brand-site .public-footer .footer-title {color:#f0d082!important}
+.ts-brand-site .public-footer::before {background:radial-gradient(circle,#bb8d3e38,transparent 70%)}
+.ts-brand-site .public-footer .footer-grid,.ts-brand-site .public-footer .footer-bottom {min-width:0}
+.ts-brand-site .page-banner,.ts-brand-site .detail-hero,.ts-brand-site .payment-page-heading {
+  background:radial-gradient(ellipse at 70% 30%,#234c7c,#12345e 48%,#071b39 100%);color:#fff
+}
+.ts-brand-site .page-banner .eyebrow,.ts-brand-site .detail-hero .eyebrow {color:#f0d085}
+.ts-brand-site .page-banner p,.ts-brand-site .detail-hero p {color:#e0e5ee}
+.ts-brand-site .page-banner-content {min-height:clamp(195px,22vw,295px)}
+.ts-brand-site :where(.service-card,.category-card,.content-card,.legal-card,.detail-art,.apply-card,.side-summary) {
+  border-color:#e4dfd4;box-shadow:0 12px 32px #061b3913;
+}
+.ts-brand-site .service-card-meta span,.ts-brand-site .service-card-price-row strong {color:#a87827}
+.ts-brand-site .service-card-icon,.ts-brand-site .mini-icon {background:#fcf2dc;color:#a87827}
+.ts-brand-site .category-card {background:linear-gradient(160deg,#091d3c,#1a456e)}
+.ts-brand-site .detail-art-placeholder {background:radial-gradient(circle,#a7823541,transparent 60%),#0a2144}
+.ts-brand-site .calculator-placeholder svg,.ts-brand-site .feature-stack .mini-icon svg {color:#b08336}
+.ts-brand-site .service-card-action.call svg,.ts-brand-site .service-card-action.whatsapp svg {color:#ac7d30}
+.ts-brand-site .service-card-action.apply {border-radius:12px}
+.ts-brand-site .cta-banner {background:linear-gradient(110deg,#091e3e,#194574);border:1px solid #ad813d80}
+.ts-brand-site .cta-banner .eyebrow {color:#e8c477}
+/* Every role inherits the same application frame and color tokens. */
+.dashboard-app,.dashboard-app.premium-mode {
+  background:linear-gradient(135deg,#f8fafc,#f3f5f9 72%,#f9f6ee);color:var(--ts-navy-900)
+}
+.dashboard-app .dashboard-sidebar {
+  width:268px;flex-basis:268px;max-width:calc(100vw - 42px);
+  background:linear-gradient(182deg,#081b36,#102e55 58%,#153863 100%);
+  border-right:1px solid #d0a34b45;box-shadow:10px 0 32px #071a3233
+}
+.dashboard-app .sidebar-logo {
+  width:51px;height:51px;border:1px solid #d3ae62;border-radius:50%;
+  background:#081c3b;overflow:hidden
+}
+.dashboard-app .sidebar-logo img {padding:0;object-fit:contain;width:100%;height:100%}
+.dashboard-app .sidebar-brand {gap:11px}
+.dashboard-app .sidebar-brand strong {color:#f7e4b7;font-size:15px;letter-spacing:.01em}
+.dashboard-app .sidebar-brand small {color:#b7c9df;font-size:10px}
+.dashboard-app .sidebar-section-label {color:#dfc68f;letter-spacing:.16em}
+.dashboard-app .sidebar-nav {min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#b08b4a #0e284a}
+.dashboard-app .sidebar-nav a {color:#dce6f3;border-radius:12px;font-size:12px;line-height:1.35}
+.dashboard-app .sidebar-nav a:hover {background:#ffffff14;color:#fff4d5}
+.dashboard-app .sidebar-nav a.active {color:#fff6df;background:linear-gradient(100deg,#d3a14c48,#ffffff12);
+ box-shadow:inset 3px 0 #eec879}
+.dashboard-app .nav-icon {background:#ffffff15;color:#f0d38f}
+.dashboard-app .sidebar-nav a.active .nav-icon {background:#e6c477;color:#0a264a}
+.dashboard-app .sidebar-nav a b {background:#f7d783}
+.dashboard-app .sidebar-premium-card {border-color:#b58d4a70;background:#fff7e80e;color:#f6e7c9}
+.dashboard-app .sidebar-premium-copy strong {color:#fce8b5}
+.dashboard-app .sidebar-premium-icon {color:#f5d17a}
+.dashboard-app .sidebar-premium-switch {border-color:#d1af6b}
+.dashboard-app .sidebar-logout {color:#ffe2a6}
+.dashboard-app .sidebar-logout:hover {color:#fff;background:#ffffff16}
+.dashboard-app .dashboard-main {width:0;flex:1 1 0;min-width:0;max-width:100%}
+.dashboard-app .dashboard-header {
+  min-height:70px;gap:12px;padding:10px clamp(12px,2.1vw,30px);
+  border-bottom:1px solid #e3b15f62;
+  background:linear-gradient(112deg,#0a2348,#153763 62%,#1a4571);
+  box-shadow:0 6px 20px rgba(6,25,53,.16)
+}
+.dashboard-app .breadcrumb {color:#ddc88f}
+.dashboard-app .dashboard-header h1 {color:#fff;font-size:clamp(14px,1.2vw,19px)}
+.dashboard-app .dashboard-search {min-width:0;max-width:min(410px,32vw);background:#ffffff14;color:#f3e6c8;border-color:#ffffff38}
+.dashboard-app .dashboard-search input {color:#fff;background:transparent}
+.dashboard-app .dashboard-search input::placeholder {color:#d1d8e6}
+.dashboard-app .dashboard-search kbd {color:#f4d593}
+.dashboard-app .profile-chip {color:#fff4d8;background:#ffffff16;border:1px solid #d8b36b78;border-radius:999px}
+.dashboard-app .profile-chip .avatar.small {background:linear-gradient(130deg,#b48132,#f7d987);color:#0e2a4d;border:1px solid #ffe3ab}
+.dashboard-app .profile-menu {border-color:#e4d5ba;box-shadow:0 17px 40px #04152b3e}
+.dashboard-app .profile-menu-item:hover {color:#17406d;background:#fbf1da}
+.dashboard-app .profile-menu-item svg {color:#a87826}
+.dashboard-app .notification-button {color:#fce4af;border-color:#dbc18666;background:#ffffff12}
+.dashboard-app .notification-panel {max-width:calc(100vw - 20px);border-color:#ddcbab;box-shadow:0 18px 42px #06132d40}
+.dashboard-app .notification-panel-head {background:#fdf6e7}
+.dashboard-app .notification-footer {color:#9d6c21}
+.dashboard-app .dashboard-content {min-width:0;width:100%;padding:clamp(16px,2.3vw,32px)}
+.dashboard-app .workspace-page {min-width:0;max-width:100%}
+.dashboard-app .page-intro {min-width:0}
+.dashboard-app .page-intro h2 {color:#112d51;line-height:1.15}
+.dashboard-app .page-intro p {color:#637389}
+.dashboard-app :where(.panel,.stat-card,.dashboard-kpi-card,.dashboard-command-center,.dashboard-reference-panel,.dashboard-insight-card,.dashboard-chart-card,.dashboard-analytics-shell,.dashboard-workspace-card,.profile-hero,.workflow-panel,.order-detail-hero) {
+  border-color:#e0e4ec;box-shadow:0 10px 29px rgba(8,25,52,.065)
+}
+.dashboard-app .profile-hero,.dashboard-app .order-detail-hero,.dashboard-app .dashboard-overview-hero {
+  background:linear-gradient(115deg,#0a2349,#1b4875);color:#fff;border:1px solid #cda65c76
+}
+.dashboard-app .profile-hero h2,.dashboard-app .order-detail-hero h2,.dashboard-app .dashboard-overview-hero h2 {color:#fff}
+.dashboard-app .profile-large-avatar {color:#102e55;background:linear-gradient(125deg,#f9e5a9,#c99a41)}
+.dashboard-app .stat-icon,.dashboard-app .dashboard-command-icon {background:#f8e7c4;color:#9f6b20}
+.dashboard-app .dashboard-kpi-top svg,.dashboard-app .dashboard-kpi-bottom b {color:#b98834}
+.dashboard-app .dashboard-kpi-card>strong,.dashboard-app .stat-card>strong {color:#102d53}
+.dashboard-app .dashboard-kpi-card:hover {border-color:#cbaa74}
+.dashboard-app .data-table th,.dashboard-app .data-table thead th {
+  color:#1b395f;background:#f4f0e8;border-bottom:1px solid #d9d4cb
+}
+.dashboard-app .data-table tbody tr:hover {background:#faf7ef}
+.dashboard-app .table-link,.dashboard-app .table-person a {color:#a27026}
+.dashboard-app .table-scroll {overflow-x:auto;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch;max-width:100%}
+.dashboard-app .data-table {min-width:max-content;width:100%;border-collapse:collapse}
+.dashboard-app .data-table :where(th,td) {white-space:normal;vertical-align:middle}
+.dashboard-app .data-table th {white-space:nowrap}
+.dashboard-app .status-badge {white-space:nowrap}
+.dashboard-app .profile-grid,.dashboard-app .settings-grid {min-width:0}
+.dashboard-app .mobile-bottom-nav {
+  border-top:1px solid #d2a458a0;background:#fdfcf8f5;
+  box-shadow:0 -7px 28px #09284916;backdrop-filter:blur(14px)
+}
+.dashboard-app .mobile-bottom-nav a {color:#61758e}
+.dashboard-app .mobile-bottom-nav a.active {color:#a36f1e}
+.dashboard-app .mobile-bottom-nav a.active svg {color:#ae7925}
+.dashboard-app .workflow-stats {min-width:0}
+.dashboard-app .workflow-panel {overflow:visible}
+.dashboard-app .workflow-tools,.dashboard-app .inline-actions,.dashboard-app .filter-panel {
+  min-width:0;max-width:100%;flex-wrap:wrap
+}
+.dashboard-app .notification-push-control {min-width:0}
+/* Long tabs, large reports and dense payment forms stay usable without forcing the page wider. */
+:where(.dashboard-app,.public-site) :where(.table-scroll,.data-table-wrap,.table-wrapper,.filter-pills,.admin-tabs,.tabs-strip,.tabs-bar) {
+  max-width:100%;min-width:0
+}
+:where(.dashboard-app,.public-site) :where(.table-scroll,.table-wrapper,.data-table-wrap) {
+  overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-inline:contain
+}
+:where(.dashboard-app,.public-site) :where(.admin-tabs,.tabs-strip,.tabs-bar,.filter-pills) {
+  overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin
+}
+:where(.dashboard-app,.public-site) :where(.filter-panel,.page-intro,.service-toolbar,.page-intro-actions,.hero-actions,.header-actions,.profile-fields) {min-width:0;max-width:100%}
+:where(.dashboard-app,.public-site) :where(.panel,.content-card,.modal-card,.form-row,.application-fields-grid,.payment-layout,.support-layout,.order-detail-grid) {min-width:0}
+:where(.dashboard-app,.public-site) :where(.modal-backdrop,.modal-overlay) {padding:12px}
+:where(.dashboard-app,.public-site) :where(.modal-card,.workflow-modal) {width:min(100%,750px);max-height:calc(100dvh - 26px);overflow-y:auto}
+:where(.dashboard-app,.public-site) :where(.notification-panel,.profile-menu) {z-index:80}
+:where(.dashboard-app,.public-site) :where(.page-intro-actions,.hero-actions) {flex-wrap:wrap}
+:where(.dashboard-app,.public-site) :where(.service-grid,.category-grid,.stats-grid,.report-stats,.workspace-grid) {min-width:0}
+:where(.dashboard-app,.public-site) :where(.form-row>* , .settings-grid>*, .profile-grid>*, .workspace-grid>*, .detail-body>*, .order-detail-grid>*) {min-width:0}
+/* Tablet and landscape devices */
+@media (max-width:1199px) {
+  .dashboard-app .dashboard-sidebar {width:240px;flex-basis:240px}
+  .dashboard-app .dashboard-content {padding:22px}
+  .dashboard-app .dashboard-search {max-width:28vw}
+  .dashboard-app .profile-grid,.dashboard-app .order-detail-grid,.dashboard-app .payment-layout {gap:16px}
+  .ts-brand-site .services-mega-menu {max-width:calc(100vw - 44px)}
+}
+@media (max-width:960px) {
+  .dashboard-app .dashboard-sidebar {
+    position:fixed;top:0;bottom:0;left:min(-330px,-100vw);z-index:40;
+    width:min(300px,calc(100vw - 44px));max-width:calc(100vw - 44px);
+    height:100dvh;flex-basis:auto;transition:left .25s ease
+  }
+  .dashboard-app .dashboard-sidebar.open {left:0}
+  .dashboard-app .dashboard-main {width:100%;flex:1 1 auto}
+  .dashboard-app .dashboard-header {min-height:62px}
+  .dashboard-app .dashboard-search {display:none}
+  .dashboard-app .dashboard-content {padding:19px 18px 92px}
+  .dashboard-app .mobile-bottom-nav {display:grid;min-height:64px;z-index:30;padding-bottom:max(6px,env(safe-area-inset-bottom))}
+  .dashboard-app .notification-panel {max-height:min(74dvh,560px);overflow:auto}
+  .ts-brand-site .public-nav {gap:10px}
+  .ts-brand-site .public-nav-links {display:none}
+  .ts-brand-site .brand-mark-link {flex:1 1 auto}
+  .ts-brand-site .brand-mark-link strong {font-size:14px}
+  .ts-brand-site .public-sidebar-drawer {max-width:calc(100vw - 28px)}
+}
+@media (max-width:760px) {
+  .dashboard-app .dashboard-content {padding:17px 14px calc(92px + env(safe-area-inset-bottom))}
+  .dashboard-app .dashboard-header {padding-inline:13px}
+  .dashboard-app .dashboard-overview-actions,.dashboard-app .header-actions {gap:9px}
+  .dashboard-app .dashboard-kpi-grid,.dashboard-app .stats-grid,.dashboard-app .report-stats,
+  .dashboard-app .dashboard-command-grid,.dashboard-app .workflow-stats {
+    grid-template-columns:repeat(2,minmax(0,1fr))
+  }
+  .dashboard-app .profile-grid,.dashboard-app .settings-grid,.dashboard-app .payment-layout,
+  .dashboard-app .order-detail-grid,.dashboard-app .support-layout,.dashboard-app .detail-body,
+  .ts-brand-site .detail-body,.ts-brand-site .contact-grid,.ts-brand-site .calculator-layout,
+  .ts-brand-site .two-column-copy {
+    grid-template-columns:minmax(0,1fr)
+  }
+  .dashboard-app .profile-chip {padding:3px;min-width:41px;min-height:41px}
+  .dashboard-app .profile-chip .avatar.small {width:34px;height:34px}
+  .dashboard-app .page-intro {display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+  .dashboard-app .page-intro-actions {width:100%}
+  .dashboard-app .page-intro-actions>* {max-width:100%}
+  .dashboard-app .notification-panel {position:fixed;top:65px;right:10px;left:10px;width:auto;max-width:none}
+  .ts-brand-site .public-header {padding:8px 0}
+  .ts-brand-site .public-nav {min-height:62px;border-radius:15px;padding:8px 11px}
+  .ts-brand-site .footer-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ts-brand-site .page-banner h1 {font-size:clamp(29px,7vw,44px);line-height:1.05}
+  .ts-brand-site .page-banner-content {min-height:210px}
+  .ts-brand-site .service-grid,.ts-brand-site .service-grid.wide {grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:540px) {
+  .container-wide {width:calc(100% - 28px)}
+  .dashboard-app .dashboard-content {padding:14px 11px calc(93px + env(safe-area-inset-bottom))}
+  .dashboard-app .dashboard-header {min-height:60px}
+  .dashboard-app .dashboard-header h1 {max-width:48vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+  .dashboard-app .breadcrumb {font-size:9px}
+  .dashboard-app .header-actions {gap:6px}
+  .dashboard-app .mobile-bottom-nav {grid-auto-columns:minmax(0,1fr);gap:0}
+  .dashboard-app .mobile-bottom-nav a {min-width:0;padding:4px 2px;line-height:1.2;font-size:9px}
+  .dashboard-app .mobile-bottom-nav a span {max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .dashboard-app .mobile-bottom-nav a svg {width:20px;height:20px}
+  .dashboard-app .dashboard-kpi-grid,.dashboard-app .stats-grid,.dashboard-app .report-stats {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dashboard-app .dashboard-kpi-card {padding:13px}
+  .dashboard-app .dashboard-kpi-card>strong {font-size:clamp(17px,5vw,23px)}
+  .dashboard-app .dashboard-command-grid,.dashboard-app .workflow-stats,.dashboard-app .dashboard-analytics-grid,
+  .dashboard-app .dashboard-insight-metrics,.dashboard-app .dashboard-status-bars,
+  .dashboard-app .dashboard-utilization-grid {grid-template-columns:minmax(0,1fr)}
+  .dashboard-app .dashboard-donut-layout {grid-template-columns:minmax(0,1fr);justify-items:center}
+  .dashboard-app .panel,.dashboard-app .content-card {padding:15px}
+  .dashboard-app .profile-grid {gap:14px}
+  .dashboard-app .service-toolbar,.dashboard-app .filter-panel,.dashboard-app .page-intro-actions {flex-direction:column;align-items:stretch}
+  .dashboard-app .page-intro h2 {font-size:clamp(21px,6vw,29px)}
+  .dashboard-app :where(.order-row,.simple-record-list>div) {min-width:0;flex-wrap:wrap}
+  .dashboard-app .notification-panel {top:61px;left:8px;right:8px}
+  .dashboard-app .profile-menu {right:0;max-width:min(310px,calc(100vw - 18px))}
+  .ts-brand-site .public-nav {min-height:56px;gap:7px;padding:7px}
+  .ts-brand-site .brand-mark-link {gap:7px}
+  .ts-brand-site .brand-mark-link strong {font-size:12px}
+  .ts-brand-site .brand-mark-link small {display:none}
+  .ts-brand-site .brand-logo-frame {width:37px;height:37px;flex:0 0 37px}
+  .ts-brand-site .nav-cta {min-width:0;padding:8px 10px;font-size:10px}
+  .ts-brand-site .public-sidebar-trigger {flex-basis:39px;width:39px;height:39px}
+  .ts-brand-site .service-grid,.ts-brand-site .service-grid.wide,.ts-brand-site .category-grid {grid-template-columns:minmax(0,1fr)}
+  .ts-brand-site .services-category-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ts-brand-site .footer-grid {gap:22px}
+  .ts-brand-site .footer-bottom {padding-bottom:max(20px,env(safe-area-inset-bottom))}
+  .ts-brand-site .cta-banner {padding:26px 19px}
+}
+@media (max-width:355px) {
+  .dashboard-app .dashboard-content {padding-inline:8px}
+  .dashboard-app .dashboard-kpi-grid,.dashboard-app .stats-grid,.dashboard-app .report-stats {grid-template-columns:minmax(0,1fr)}
+  .dashboard-app .header-actions {gap:3px}
+  .dashboard-app .notification-button,.dashboard-app .profile-chip {min-width:38px;min-height:38px}
+  .ts-brand-site .brand-mark-link strong {font-size:11px}
+  .ts-brand-site .public-nav {padding:6px;gap:5px}
+  .ts-brand-site .nav-cta {padding:7px;font-size:9px}
+}
+@media (max-width:960px) and (orientation:landscape) and (max-height:550px) {
+  .dashboard-app .dashboard-sidebar {height:100dvh;overflow-y:auto}
+  .dashboard-app .dashboard-header {position:sticky;top:0;min-height:53px}
+  .dashboard-app .dashboard-content {padding-bottom:83px}
+  .ts-brand-site .public-header {padding:4px 0}
+}
+/* Accessible motion and small-screen scroll behavior. */
+@media(prefers-reduced-motion:reduce) {
+  :where(.dashboard-app,.public-site) *, :where(.dashboard-app,.public-site) *::before,
+  :where(.dashboard-app,.public-site) *::after {animation-duration:.01ms!important;scroll-behavior:auto!important;transition-duration:.01ms!important}
+}
