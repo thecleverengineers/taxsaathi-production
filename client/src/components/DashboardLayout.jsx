@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { api, assetUrl } from '../lib/api';
+import { api } from '../lib/api';
 import { useAuth } from './AuthContext';
 import Icon from './Icons';
 import { statusLabel } from '../lib/format';
@@ -191,8 +191,8 @@ export default function DashboardLayout() {
   return (
     <div className={'dashboard-app' + (premiumMode ? ' premium-mode' : '')}>
       <div className={`sidebar-backdrop ${sidebar ? 'show' : ''}`} onClick={() => setSidebar(false)} />
-      <aside className={`dashboard-sidebar ${sidebar ? 'open' : ''}`}>
-        <div className="sidebar-top"><Link className="sidebar-brand" to="/dashboard"><span className="sidebar-logo"><img src={assetUrl(site.site_logo)} alt="" /></span><span><strong>{site.site_name}</strong><small>{user?.role?.name || 'Workspace'}</small></span></Link><button className="icon-button mobile-only" onClick={() => setSidebar(false)}><Icon name="close" /></button></div>
+      <aside id="workspace-sidebar" className={`dashboard-sidebar ${sidebar ? 'open' : ''}`}>
+        <div className="sidebar-top"><Link className="sidebar-brand" to="/dashboard"><span className="sidebar-logo"><img src="/taxsaathi-logo.png" alt="" /></span><span><strong>Tax Saathi</strong><small>{user?.role?.name || 'Workspace'}</small></span></Link><button className="icon-button mobile-only" onClick={() => setSidebar(false)}><Icon name="close" /></button></div>
         <div className="sidebar-section-label">Workspace</div>
         <nav className="sidebar-nav">{navItems.map(([label, path, icon]) => <NavLink key={path} to={path} className={isActive(path) ? 'active' : ''} onClick={() => setSidebar(false)}><span className="nav-icon"><Icon name={icon} size={17} /></span><span>{label}</span>{isActive(path) && <b />}</NavLink>)}</nav>
         <section className={'sidebar-premium-card' + (premiumMode ? ' enabled' : '')} aria-label="Premium appearance">
@@ -210,7 +210,7 @@ export default function DashboardLayout() {
       </aside>
       <div className="dashboard-main">
         <header className="dashboard-header">
-          <div className="header-left"><button className="icon-button mobile-only" onClick={() => setSidebar(true)}><Icon name="menu" /></button><div><div className="breadcrumb"><span>TaxSaathi</span><i>•</i><span>{user?.role?.name || 'Workspace'}</span></div><h1>{pageName}</h1></div></div>
+          <div className="header-left"><button className="icon-button mobile-only" aria-label="Open workspace menu" aria-controls="workspace-sidebar" aria-expanded={sidebar} onClick={() => setSidebar(true)}><Icon name="menu" /></button><div><div className="breadcrumb"><span>Tax Saathi</span><i>•</i><span>{user?.role?.name || 'Workspace'}</span></div><h1>{pageName}</h1></div></div>
           <label className="dashboard-search"><Icon name="search" size={15} /><input aria-label="Search workspace" placeholder="Search pages, orders, charts…" /><kbd>⌘K</kbd></label>
           <div className="header-actions"><div className="notification-wrap"><button className="notification-button" onClick={() => setNotificationOpen((value) => !value)}><Icon name="bell" size={19} />{unread > 0 && <em>{unread > 99 ? '99+' : unread}</em>}</button>{notificationOpen && <div className="notification-panel"><div className="notification-panel-head"><div><small>Activity center</small><strong>Notifications</strong></div><button onClick={markAllRead}>Mark all read</button></div><div className="notification-push-control"><span className="notification-push-copy"><strong>Device push alerts</strong><small>{pushDetail}</small></span><button className="button light small" type="button" disabled={pushSupported === null || !pushSupported || pushBusy} onClick={togglePushNotifications}>{pushBusy ? "Saving…" : pushEnabled ? "Turn off" : "Enable"}</button></div>{pushMessage && <p className="notification-push-message" role="status">{pushMessage}</p>}<div className="notification-list">{notifications.length ? notifications.slice(0, 12).map((item) => <button key={`${item.id}-${item.uid || ''}`} className={`notification-item ${item.is_read ? '' : 'unread'}`} onClick={() => markRead(item.id)}><span className={`notification-dot ${item.severity || 'info'}`} /><span><strong>{item.title}</strong><small>{item.message}</small><i>{item.time_ago || 'Recently'}</i></span></button>) : <div className="empty-panel">No new activity.</div>}</div><Link to="/notifications" className="notification-footer" onClick={() => setNotificationOpen(false)}>Open notification center <Icon name="arrow" size={14} /></Link></div>}</div><div className="profile-menu-wrap" ref={profileMenuRef}>
             <button className="profile-chip" type="button" aria-label="Open profile menu" aria-haspopup="menu" aria-expanded={profileOpen} onClick={() => setProfileOpen((value) => !value)}>
