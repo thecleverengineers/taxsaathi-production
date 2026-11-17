@@ -83,6 +83,11 @@ export default function PublicLayout() {
   const role = user?.role?.slug || 'client';
   const ordersPath = ['partner', 'partners'].includes(role) ? '/partner/orders' : ['admin', 'manager', 'executive'].includes(role) ? '/admin/orders' : '/client/orders';
   const sidebarLinkClass = ({ isActive }) => `public-sidebar-link ${isActive ? 'active' : ''}`;
+  // Authentication uses its own full-bleed responsive cover without the public header/footer.
+  if (['/auth', '/register', '/forgot-password'].includes(location.pathname)) {
+    return <Outlet />;
+  }
+
   return (
     <div className="public-site">
       <div className="ambient-orb orb-one" />

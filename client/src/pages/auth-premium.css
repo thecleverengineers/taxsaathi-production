@@ -1,0 +1,193 @@
+/* Tax Saathi premium authentication — navy & metallic gold */
+.ts-auth-root {
+  --ts-navy:#0a2146; --ts-navy-2:#102e5a; --ts-gold:#c68b26; --ts-gold-light:#f9d777;
+  display:grid; grid-template-columns:minmax(0,52%) minmax(0,48%);
+  min-height:100dvh; color:var(--ts-navy); background:#f8f7f5;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+.ts-auth-root *, .ts-auth-root *::before, .ts-auth-root *::after {box-sizing:border-box}
+.ts-auth-showcase {
+  isolation:isolate; position:relative; display:flex; flex-direction:column;
+  align-items:center; justify-content:space-between; min-height:100dvh;
+  overflow:hidden; padding:6vh 28px 0;
+  color:#fff;
+  background:radial-gradient(ellipse at 50% 25%,#294d7d 0%,#133360 38%,#061b3b 77%,#05152c 100%);
+}
+.ts-auth-showcase::before {content:"";position:absolute;inset:0;z-index:-1;opacity:.22;
+ background:linear-gradient(90deg,transparent 10%,rgba(255,255,255,.11) 10.2%,transparent 11%,transparent 20%,rgba(255,255,255,.12) 20.3%,transparent 21%,transparent 74%,rgba(255,255,255,.09) 74.3%,transparent 75%),
+ linear-gradient(0deg,rgba(12,38,70,.2),transparent 65%);
+}
+.ts-auth-showcase::after {content:"";position:absolute;inset:auto -10% 0;height:28%;z-index:0;pointer-events:none;
+ background:linear-gradient(0deg,#07162c 5%,rgba(9,25,49,.75) 52%,transparent 100%);
+}
+.ts-auth-ribbon {position:absolute;pointer-events:none;border-radius:50%;z-index:0;transform:rotate(-24deg)}
+.ts-auth-ribbon-one {width:115%;height:112%;left:-38%;top:-47%;border:8px solid rgba(246,205,116,.86);box-shadow:0 0 18px #ba822344,inset 0 0 12px #e2ae4655}
+.ts-auth-ribbon-two {width:119%;height:118%;left:-26%;top:-48%;border:2px solid rgba(218,173,97,.26)}
+.ts-auth-city {position:absolute;left:0;bottom:12%;width:100%;height:50%;opacity:.12;z-index:-1;
+ background:repeating-linear-gradient(90deg,transparent 0 25px,#879bb5 25px 56px,transparent 56px 77px,#a2b3c7 77px 105px,transparent 105px 132px);
+ mask-image:linear-gradient(to top,#000,transparent 90%);
+}
+.ts-auth-showcase-top {position:relative;z-index:3;display:flex;flex-direction:column;align-items:center;width:100%;gap:23px}
+.ts-auth-logo {display:grid;place-items:center;width:clamp(220px,25vw,380px);aspect-ratio:1;text-decoration:none;
+ border-radius:50%;filter:drop-shadow(0 10px 26px #020b2190)}
+.ts-auth-logo img {width:100%;height:100%;object-fit:contain;display:block}
+.ts-auth-tagline {display:flex;align-items:center;justify-content:center;gap:17px;width:100%;color:#f8e5b6;white-space:nowrap;
+ font:italic 500 clamp(18px,2vw,31px)/1.25 Georgia,"Times New Roman",serif;letter-spacing:.005em;text-shadow:0 3px 12px #0008}
+.ts-auth-tagline i {display:block;width:clamp(20px,3vw,52px);height:2px;background:linear-gradient(90deg,#c88b27,#ffdf85);flex:0 1 auto}
+.ts-auth-office {position:relative;width:min(100%,810px);height:35vh;min-height:260px;max-height:420px;z-index:2;flex:0 0 auto;
+ border-bottom:4px solid #b37d28;
+ background:linear-gradient(0deg,rgba(226,166,76,.2),transparent 15%);filter:drop-shadow(0 12px 14px #030c1c66)}
+.ts-auth-office-glow {position:absolute;left:3%;right:4%;bottom:0;height:4px;background:linear-gradient(90deg,transparent,#ffe6a5 32%,#d39430 65%,transparent);box-shadow:0 0 28px 6px #f0b65370}
+.ts-auth-books {position:absolute;z-index:4;right:3%;bottom:8%;width:39%;height:45%;display:flex;flex-direction:column;justify-content:flex-end;transform:perspective(500px) rotateY(-6deg)}
+.ts-auth-books span {display:flex;align-items:center;height:24%;padding:0 17%;min-height:24px;position:relative;letter-spacing:.06em;
+ font-size:clamp(8px,1.2vw,16px);font-weight:750;color:#f4c96b;text-shadow:0 2px 5px #020816;
+ border:1px solid #b68b4d;border-left:5px solid #e2bd75;border-right:9px solid #e5c89b;border-radius:5px 3px 3px 5px;
+ background:linear-gradient(180deg,#243e68 0%,#0a244c 38%,#0a1b38 78%,#243b60 100%);
+ box-shadow:1px 4px 6px #030a188a}
+.ts-auth-laptop {position:absolute;z-index:3;left:4%;bottom:10%;width:39%;height:52%;transform:perspective(400px) rotateY(-11deg)}
+.ts-auth-screen {height:85%;border:7px solid #9aa5b2;border-bottom-width:10px;border-radius:11px 11px 3px 3px;
+ background:radial-gradient(ellipse at top,#1a4777,#091d3e 75%);
+ box-shadow:0 4px 20px #020917cc,inset 0 0 22px #a3c0df24;display:grid;place-items:center;color:#ecc363}
+.ts-auth-screen svg {width:44%;height:auto;filter:drop-shadow(0 0 10px #e0af4673)}
+.ts-auth-keyboard {height:17%;margin:0 -8%;transform:perspective(90px) rotateX(42deg);transform-origin:top;background:linear-gradient(180deg,#cbd4dc,#788ca1 65%,#324660);
+ border-radius:0 0 12px 12px;box-shadow:0 10px 14px #020916aa}
+.ts-auth-paper {position:absolute;left:23%;bottom:0;z-index:5;width:36%;height:23%;transform:perspective(350px) rotateZ(-7deg) skewX(-12deg);
+ background:linear-gradient(120deg,#fbf7ed,#d8dee7);border:1px solid #e6eaf1;box-shadow:0 10px 20px #02091891}
+.ts-auth-chart-bars {position:absolute;left:20%;bottom:17%;height:45%;display:flex;align-items:end;gap:5px}
+.ts-auth-chart-bars i {display:block;width:13px;height:30%;background:linear-gradient(#ffdc7b,#ba832d)}
+.ts-auth-chart-bars i:nth-child(2){height:53%}.ts-auth-chart-bars i:nth-child(3){height:70%}.ts-auth-chart-bars i:nth-child(4){height:96%}
+.ts-auth-paper b {position:absolute;left:54%;height:2px;background:#a5b1bd;width:33%}
+.ts-auth-paper b:nth-of-type(1){top:33%}.ts-auth-paper b:nth-of-type(2){top:51%}.ts-auth-paper b:nth-of-type(3){top:69%}
+.ts-auth-calculator {position:absolute;left:7%;bottom:2%;width:19%;height:23%;transform:rotate(-9deg);border:5px solid #b38c57;border-radius:9px;
+ background:#10264a;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:18px 7px 7px;box-shadow:1px 8px 13px #000a}
+.ts-auth-calculator i {border-radius:2px;background:linear-gradient(#41577a,#1c2d4a);box-shadow:inset 0 1px #ffffff3b}
+.ts-auth-plant {position:absolute;left:0;bottom:13%;z-index:6;width:15%;height:47%}
+.ts-auth-plant b {position:absolute;bottom:0;left:26%;width:56%;height:40%;background:linear-gradient(90deg,#8d5d22,#ffdf80 48%,#a56925);border-radius:4px 4px 14px 14px;box-shadow:0 8px 13px #0005}
+.ts-auth-plant i {position:absolute;width:46%;height:27%;bottom:38%;left:36%;border-radius:100% 0 100% 0;background:linear-gradient(120deg,#8db43a,#245a31);transform-origin:bottom left}
+.ts-auth-plant i:nth-child(1){transform:rotate(-85deg)}.ts-auth-plant i:nth-child(2){transform:rotate(-48deg);height:44%}
+.ts-auth-plant i:nth-child(3){transform:rotate(-20deg);height:52%}.ts-auth-plant i:nth-child(4){transform:rotate(30deg);height:45%}
+.ts-auth-plant i:nth-child(5){transform:rotate(70deg);height:35%}.ts-auth-plant i:nth-child(6){transform:rotate(120deg)}
+.ts-auth-pen-holder {position:absolute;right:0;bottom:8%;z-index:5;width:12%;height:25%}
+.ts-auth-pen-holder b {display:block;position:absolute;bottom:0;width:87%;height:64%;border-radius:3px 3px 14px 14px;
+ background:linear-gradient(90deg,#80511d,#fad277 47%,#7b501c);box-shadow:0 5px 12px #0006}
+.ts-auth-pen-holder i {position:absolute;bottom:46%;width:6px;height:67%;background:linear-gradient(90deg,#b4a485,#182a49,#d9b865);transform:rotate(-18deg);left:38%;border-radius:3px}
+.ts-auth-pen-holder i:nth-child(2){left:62%;transform:rotate(14deg)}
+.ts-auth-panel {position:relative;z-index:4;display:flex;align-items:center;justify-content:center;min-height:100dvh;
+ margin-left:-44px;width:calc(100% + 44px);padding:40px clamp(28px,4.4vw,88px) 40px clamp(78px,7.1vw,125px);
+ border-left:11px solid #e2b34e;border-radius:14% 0 0 14% / 51% 0 0 51%;
+ background:radial-gradient(ellipse at 50% 35%,#fff 0%,#fcfbfa 72%,#f3f0ea 100%);box-shadow:-13px 0 31px #040b2245}
+.ts-auth-panel-inner {z-index:2;position:relative;width:min(100%,520px);padding-block:12px}
+.ts-auth-decor {position:absolute;border-radius:50%;pointer-events:none;opacity:.45}
+.ts-auth-decor-top {width:245px;height:245px;right:-145px;top:-145px;border:30px solid #e7b448;box-shadow:inset 0 0 0 30px #7087a1}
+.ts-auth-decor-bottom {width:270px;height:270px;right:-158px;bottom:-165px;border:27px solid #e7b448;box-shadow:inset 0 0 0 29px #889bae}
+.ts-auth-heading h1 {margin:0;font-size:clamp(30px,3.15vw,51px);font-weight:850;letter-spacing:-.046em;line-height:1.12;color:#081f46}
+.ts-auth-heading p {max-width:480px;margin:13px 0 18px;font-size:clamp(13px,1.15vw,17px);line-height:1.65;color:#536071}
+.ts-auth-heading-accent {display:block;width:75px;height:4px;margin:20px 0 27px;
+ background:linear-gradient(90deg,#bd8020,#f9d677 55%,#b67b1e)}
+.ts-auth-section-title {font-size:clamp(23px,2.2vw,36px);font-weight:850;line-height:1.15;letter-spacing:-.035em;
+ margin-bottom:23px;color:#081f46}
+.ts-auth-form {display:grid;gap:14px}
+.ts-auth-field {display:block;min-width:0}
+.ts-auth-field-label {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.ts-auth-input-wrap {display:flex;align-items:center;gap:15px;min-height:61px;width:100%;padding:0 17px;
+ color:#112a54;border:1.5px solid #bdc7d7;border-radius:12px;background:linear-gradient(180deg,#fff,#fafafa);
+ box-shadow:0 3px 9px #111e3410;transition:border-color .2s,box-shadow .2s}
+.ts-auth-input-wrap:focus-within {border-color:#c68b26;box-shadow:0 0 0 4px #e1b65d2b}
+.ts-auth-input-wrap > svg {flex:0 0 auto}
+.ts-auth-input-wrap input {flex:1;min-width:0;min-height:58px;border:0!important;outline:0!important;
+ background:transparent!important;box-shadow:none!important;color:#112a54!important;
+ font:inherit;font-size:15px!important;font-weight:500;padding:0!important}
+.ts-auth-input-wrap input::placeholder {color:#667083;opacity:1}
+.ts-auth-visibility {display:grid;place-items:center;flex:0 0 auto;padding:7px;border:0;background:transparent;color:#516078;cursor:pointer}
+.ts-auth-visibility:hover {color:#be8627}
+.ts-auth-visibility:focus-visible,.ts-auth-back-button:focus-visible,.ts-auth-submit:focus-visible,.ts-auth-root a:focus-visible {outline:3px solid #d4a23b;outline-offset:3px}
+.ts-auth-form-tools {display:flex;justify-content:flex-end;margin:2px 0 7px}
+.ts-auth-form-tools a,.ts-auth-switch a {color:#09234b;font-size:14px;font-weight:750;text-decoration:underline;text-underline-offset:3px}
+.ts-auth-submit {display:flex;align-items:center;justify-content:center;gap:15px;min-height:66px;width:100%;margin-top:16px;
+ border:1px solid #b98121;border-radius:13px;cursor:pointer;color:#08214a;letter-spacing:-.02em;
+ font:inherit;font-weight:850;font-size:21px;
+ background:linear-gradient(110deg,#bb8227 0%,#ffdf85 44%,#ebbd55 69%,#b77b1f 100%);
+ box-shadow:inset 0 1px #fff4bc,0 3px 0 #a8701b,0 11px 20px #7a510c36;transition:transform .15s,filter .15s}
+.ts-auth-submit:hover:not(:disabled){filter:brightness(1.04);transform:translateY(-2px)}
+.ts-auth-submit:disabled{opacity:.7;cursor:wait}
+.ts-auth-switch {margin:22px 0 0;text-align:center;color:#607087;font-size:14px;line-height:1.5}
+.ts-auth-microcopy {font-size:12px;line-height:1.5;color:#738095;text-align:center;margin:16px 0 0}
+.ts-auth-security {display:flex;align-items:center;justify-content:center;gap:7px;margin-top:31px;
+ font-size:11px;line-height:1.4;color:#7e8998}
+.ts-auth-security svg {color:#b78b3e;flex:0 0 auto}
+.ts-auth-alert {padding:13px 15px;margin:0 0 17px;border-radius:11px;font-size:13px;line-height:1.5}
+.ts-auth-alert.danger {color:#9d2631;background:#fff0f1;border:1px solid #f4c7cd}
+.ts-auth-alert.success {color:#155c45;background:#edfaf4;border:1px solid #b4e3cc}
+.ts-auth-step-note {margin:0 0 12px;color:#596a7e;font-size:14px;line-height:1.55}
+.ts-auth-back-button {display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:12px 0;
+ margin-top:12px;border:0;color:#193862;background:transparent;font:inherit;font-weight:750;font-size:13px;cursor:pointer}
+.ts-auth-return a {display:inline-flex;align-items:center;gap:8px}
+.ts-auth-register .ts-auth-panel {padding-top:25px;padding-bottom:25px}
+.ts-auth-register .ts-auth-heading h1 {font-size:clamp(29px,3vw,45px)}
+.ts-auth-register .ts-auth-heading p {margin:10px 0 10px}
+.ts-auth-register .ts-auth-heading-accent {margin:13px 0 17px}
+.ts-auth-register .ts-auth-section-title {margin-bottom:16px}
+.ts-auth-register .ts-auth-form {gap:10px}
+.ts-auth-register .ts-auth-input-wrap {min-height:52px}
+.ts-auth-register .ts-auth-input-wrap input {min-height:49px}
+.ts-auth-register .ts-auth-submit {min-height:58px;margin-top:8px}
+.ts-auth-register .ts-auth-switch {margin-top:12px}
+.ts-auth-register .ts-auth-security {margin-top:18px}
+@media (max-width:1050px) and (min-width:761px){
+ .ts-auth-root {grid-template-columns:48% 52%}
+ .ts-auth-panel{padding-left:78px;padding-right:32px}
+ .ts-auth-logo{width:clamp(190px,29vw,285px)}
+ .ts-auth-tagline{font-size:19px;gap:10px}
+ .ts-auth-heading h1{font-size:34px}
+ .ts-auth-heading p{font-size:13px}
+ .ts-auth-section-title{font-size:26px}
+ .ts-auth-input-wrap{min-height:56px}
+ .ts-auth-input-wrap input{min-height:52px}
+}
+@media (max-width:760px){
+ .ts-auth-root {display:flex;flex-direction:column;min-height:100dvh;background:#0c244a}
+ .ts-auth-showcase {min-height:0;height:clamp(290px,42vh,420px);padding:24px 15px 0;justify-content:flex-start}
+ .ts-auth-ribbon-one{border-width:5px;width:135%;height:140%;left:-57%;top:-84%}
+ .ts-auth-ribbon-two{width:140%;height:130%;left:-25%;top:-80%}
+ .ts-auth-showcase-top{gap:4px}
+ .ts-auth-logo{width:clamp(155px,34vw,220px)}
+ .ts-auth-tagline{font-size:clamp(15px,3.9vw,22px);gap:9px}
+ .ts-auth-tagline i{width:21px;height:1px}
+ .ts-auth-office{position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+   width:min(96%,590px);height:42%;min-height:100px;max-height:160px}
+ .ts-auth-books span{font-size:clamp(6px,1.8vw,9px);padding-inline:12%}
+ .ts-auth-office::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:28px;background:linear-gradient(0deg,#071b3a,transparent)}
+ .ts-auth-panel {display:block;min-height:calc(100dvh - 300px);width:100%;margin:-16px 0 0;
+   padding:34px 24px max(34px,env(safe-area-inset-bottom));
+   border:0;border-top:4px solid #e0b349;border-radius:31px 31px 0 0;box-shadow:0 -9px 25px #01081755;
+   background:linear-gradient(180deg,#fff,#f9f7f3 92%)}
+ .ts-auth-panel-inner{margin-inline:auto;max-width:490px;padding:0}
+ .ts-auth-heading{text-align:center}
+ .ts-auth-heading h1{font:700 clamp(27px,6.8vw,38px)/1.12 Georgia,"Times New Roman",serif;letter-spacing:-.03em}
+ .ts-auth-heading p{font-size:13px;line-height:1.55;margin:12px 0}
+ .ts-auth-heading-accent{margin:15px auto 18px;width:120px;height:2px}
+ .ts-auth-section-title{text-align:center;font:600 23px/1.2 Georgia,"Times New Roman",serif;color:#b07922;margin-bottom:19px}
+ .ts-auth-input-wrap{min-height:56px;border-radius:14px;gap:13px}
+ .ts-auth-input-wrap input{min-height:53px;font-size:14px!important}
+ .ts-auth-submit{min-height:58px;font-size:19px;border-radius:30px;margin-top:12px}
+ .ts-auth-form{gap:12px}
+ .ts-auth-switch{font-size:13px}
+ .ts-auth-form-tools a{font-size:13px}
+ .ts-auth-decor-top{right:-197px;top:-183px}.ts-auth-decor-bottom{display:none}
+ .ts-auth-security{margin-top:23px}
+ .ts-auth-register .ts-auth-heading h1{font-size:clamp(25px,6vw,34px)}
+ .ts-auth-register .ts-auth-section-title{margin-bottom:14px}
+ .ts-auth-register .ts-auth-input-wrap{min-height:53px}
+ .ts-auth-register .ts-auth-input-wrap input{min-height:51px}
+ .ts-auth-register .ts-auth-submit{min-height:57px}
+}
+@media (max-width:390px) {
+ .ts-auth-showcase{height:290px}
+ .ts-auth-logo{width:150px}
+ .ts-auth-tagline{font-size:15px}
+ .ts-auth-panel{padding-inline:17px}
+ .ts-auth-input-wrap{padding-inline:12px}
+}
+@media (prefers-reduced-motion:reduce){
+ .ts-auth-root *{transition:none!important;animation:none!important}
+}
