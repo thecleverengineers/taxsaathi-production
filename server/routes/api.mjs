@@ -2116,7 +2116,7 @@ router.post('/orders/:id/documents/:documentId/reupload', authRequired((request)
     storage: stored.storage,
     mime_type: stored.mime_type,
     size_bytes: stored.size_bytes,
-    is_client_visible: 1,
+    is_client_visible: ['client', 'partner', 'partners'].includes(roleSlug(request.auth)) ? 1 : 0,
     uploaded_by: request.auth.user.id,
     reuploaded_for_document_id: previous.id,
     created_at: isoNow(),
