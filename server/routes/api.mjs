@@ -39,6 +39,7 @@ import { runWorkflowReminders } from '../lib/workflow.mjs';
 import { recordAudit } from '../lib/audit.mjs';
 import { permissionCatalogRows } from '../lib/rbac.mjs';
 import { dispatchWebPushNotifications, getVapidPublicKey, isTrustedPushEndpoint, isWebPushConfigured, normalizeWebPushSubscription } from '../lib/web-push.mjs';
+import workflowRouter from './workflow.mjs';
 
 const router = express.Router();
 const otpStore = new Map();
@@ -2584,5 +2585,7 @@ router.patch('/admin/intelligence/models/:id', ...roleGuard(request => request.a
   if (!row) return responseError(response, 'Intelligence model not found.', 404);
   response.json({ ok: true, model: row });
 }));
+
+router.use('/workflow', workflowRouter);
 
 export default router;
