@@ -181,7 +181,7 @@ export default function ServiceApplicationPage() {
       const isPartner = ['partner', 'partners'].includes(String(user.role?.slug || '').toLowerCase());
       navigate(isPartner ? `/partner/jobs/${orderId}` : `/client/orders/${orderId}`, {
         replace: true,
-        state: { message: `${result.order.order_no || 'Your job'} was submitted. The admin will assign it, and payment will be available after the completed work is uploaded.` }
+        state: { message: `${result.order.order_no || 'Your job'} was submitted. The admin will assign a staff member or partner, and payment will be available after the completed work is uploaded.` }
       });
     } catch (error) {
       feedback(error.message);
@@ -231,7 +231,7 @@ export default function ServiceApplicationPage() {
 
           <section className="application-section">
             <div className="application-section-heading"><span>How payment works</span><small>No payment is required at job submission.</small></div>
-            <div className="application-payment-note"><strong>Pay after the work is submitted.</strong><span>Once the assigned staff member uploads the completed work, submit your UPI transaction ID and payment proof, or choose “Pay later.” The admin reviews the payment choice and deliverable before release.</span></div>
+            <div className="application-payment-note"><strong>Pay after the work is submitted.</strong><span>Once the assigned staff member or partner uploads the completed work, submit your UPI transaction ID and payment proof, or choose “Pay later.” The admin reviews the payment choice and deliverable before release.</span></div>
           </section>
 
           <section className="application-section">
@@ -262,7 +262,7 @@ export default function ServiceApplicationPage() {
           </section>
 
           <button className="button primary full application-submit-button" type="submit" disabled={submitting}>{submitting ? <><span className="spinner" />Submitting order…</> : <>Submit Job Request <Icon name="arrow" size={16} /></>}</button>
-          <small className="application-footnote">Your job will appear in your client or partner workspace after submission. You can add documents later if requested by the assigned staff member.</small>
+          <small className="application-footnote">Your job will appear in your client or partner workspace after submission. You can add documents later if requested by the assigned worker.</small>
         </form>
       </div>
     </div>
