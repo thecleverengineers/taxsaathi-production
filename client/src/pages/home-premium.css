@@ -2,7 +2,7 @@
 .ts-home {
   --ts-ink:#0b244b;--ts-navy:#081b38;--ts-navy-mid:#123968;--ts-gold:#c98e2e;--ts-gold-light:#f8da82;
   --ts-ivory:#faf8f3;--ts-muted:#66738a;
-  overflow:hidden;background:#faf9f6;color:var(--ts-ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  overflow:hidden;background:#faf9f6;color:var(--ts-ink);font-family:'Open Sans',Arial,Helvetica,sans-serif;
 }
 .ts-home *,.ts-home *::before,.ts-home *::after{box-sizing:border-box}
 .ts-home a{text-decoration:none}
