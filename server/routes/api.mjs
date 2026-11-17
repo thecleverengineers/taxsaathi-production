@@ -1035,6 +1035,12 @@ router.post('/orders', ...roleGuard(request => request.app.locals.store, 'admin'
   }
   if (!isPartnerSubmission && !clientId) return responseError(response, 'A client profile is required before placing an order.');
   const fee = asNumber(service.filing_fee);
+  const paymentFirst = submittingRole === 'client' && fee > 0;
+  const idempotencyKey = String(request.body.idempotency_key || '').trim().slice(0, 100);
+  if (idempotencyKey) {
+    const existingOrder = await store.findOne('orders', { submitted_by_user_id: Number(request.auth.user.id), idempotency_key: idempotencyKey });
+    if (existingOrder) return response.json({ ok: true, order: await resolveOrder(store, existingOrder, request.auth), duplicate: true });
+  }
   const customerName = String(request.body.customer_name || request.auth.user.name || '').trim();
   const customerPan = String(request.body.pan_number || '').trim().toUpperCase();
   const customerMobile = String(request.body.customer_mobile || request.auth.user.phone || '').trim();
@@ -1060,9 +1066,11 @@ router.post('/orders', ...roleGuard(request => request.app.locals.store, 'admin'
     gross_fee_amount: fee,
     payable_amount: fee,
     coupon_discount_amount: 0,
-    status: 'submitted',
+    status: paymentFirst ? 'awaiting_payment' : 'submitted',
     payment_method: 'upi',
-    payment_status: 'not_due',
+    payment_status: paymentFirst ? 'unpaid' : 'not_due',
+    payment_first: paymentFirst,
+    idempotency_key: idempotencyKey || null,
     notes,
     customer_name: customerName,
     pan_number: customerPan,
@@ -1073,7 +1081,7 @@ router.post('/orders', ...roleGuard(request => request.app.locals.store, 'admin'
   });
   await store.insert('activity_logs', { user_id: request.auth.user.id, order_id: order.id, action: 'order.created', description: `Created order ${order.order_no}`, meta_json: '{}', created_at: isoNow() });
   const submitterUrl = isPartnerSubmission ? `/partner/jobs/${order.id}` : `/client/orders/${order.id}`;
-  await notify(store, { userId: request.auth.user.id, title: 'Job submitted', message: `${order.order_no} has been submitted for assignment.`, severity: 'success', url: submitterUrl, orderId: order.id });
+  await notify(store, { userId: request.auth.user.id, title: paymentFirst ? 'Payment required' : 'Job submitted', message: paymentFirst ? `${order.order_no} requires verified payment before work begins.` : `${order.order_no} has been submitted for assignment.`, severity: 'success', url: submitterUrl, orderId: order.id });
   response.status(201).json({ ok: true, order: await resolveOrder(store, order, request.auth) });
 }));
 
@@ -1105,7 +1113,7 @@ router.post('/orders/:id/approve', ...roleGuard(request => request.app.locals.st
   if (order.status !== 'awaiting_approval') return responseError(response, 'The job must be submitted for review before approval.');
   const outputs = await store.find('order_documents', { order_id: Number(order.id), source: 'staff', document_status: 'pending_approval' });
   if (!outputs.length) return responseError(response, 'Submit a deliverable before approving this job.');
-  if (!['verified', 'deferred'].includes(String(order.payment_status || '').toLowerCase())) return responseError(response, 'Verify the payment or record that the customer chose to pay later before approval.');
+  if (!(order.payment_first ? ['verified', 'paid'] : ['verified', 'paid', 'deferred']).includes(String(order.payment_status || '').toLowerCase())) return responseError(response, 'Verify payment before releasing this deliverable.');
   for (const document of outputs) {
     await store.update('order_documents', { id: document.id }, { is_client_visible: 1, document_status: 'delivered', approved_by: request.auth.user.id, approved_at: isoNow(), updated_at: isoNow() });
   }
@@ -1121,6 +1129,12 @@ router.post('/orders/:id/assign', ...roleGuard(request => request.app.locals.sto
   const order = await store.findOne('orders', { id: Number(request.params.id) });
   const assignee = await store.findOne('users', { id: Number(request.body.assigned_user_id) });
   if (!order || !assignee) return responseError(response, 'Order or assignee not found.', 404);
+  if (order.payment_first && !['verified', 'paid'].includes(String(order.payment_status || '').toLowerCase())) {
+    return responseError(response, 'Customer payment must be verified before this job can be assigned.', 409);
+  }
+  if (['awaiting_payment', 'cancelled', 'rejected', 'completed'].includes(String(order.status || ''))) {
+    return responseError(response, 'This job cannot be assigned in its current status.', 409);
+  }
   const assigneeRole = await store.findOne('roles', { id: Number(assignee.role_id) });
   if (!['executive', 'partner', 'partners'].includes(String(assigneeRole?.slug || '').toLowerCase())) return responseError(response, 'Choose an executive or partner account for assignment.');
   const updated = await store.update('orders', { id: Number(order.id) }, { assigned_user_id: assignee.id, status: 'assigned', assigned_by: request.auth.user.id, assigned_at: isoNow(), updated_at: isoNow() });
@@ -1184,7 +1198,7 @@ router.post('/orders/:id/payment-proof', ...roleGuard(request => request.app.loc
   const order = await scopedOrder(store, request, request.params.id);
   if (!order) return responseError(response, 'Order not found or access is not allowed.', 404);
   if (!ownsOrder(order, request.auth)) return responseError(response, 'Only the job owner can submit payment proof.', 403);
-  if (order.status !== 'awaiting_approval') return responseError(response, 'Payment can be submitted after the staff member uploads the completed work.');
+  if (!['awaiting_payment', 'awaiting_approval'].includes(order.status)) return responseError(response, 'This order is not ready for payment submission.');
   if (!request.file) return responseError(response, 'Payment screenshot is required.');
   const transactionId = String(request.body.transaction_id || request.body.reference_no || '').trim();
   if (!transactionId) return responseError(response, 'Transaction ID is required.');
@@ -1229,6 +1243,7 @@ router.post('/orders/:id/pay-later', ...roleGuard(request => request.app.locals.
   const order = await scopedOrder(store, request, request.params.id);
   if (!order) return responseError(response, 'Order not found or access is not allowed.', 404);
   if (!ownsOrder(order, request.auth)) return responseError(response, 'Only the job owner can choose payment later.', 403);
+  if (order.payment_first) return responseError(response, 'Payment must be verified before the purchased service is activated.', 409);
   if (order.status !== 'awaiting_approval') return responseError(response, 'Choose pay later after the staff member submits the completed work.');
   if (['verified', 'paid'].includes(String(order.payment_status || '').toLowerCase())) return responseError(response, 'Payment has already been verified.');
   if (String(order.payment_status || '').toLowerCase() === 'pending_review') return responseError(response, 'Your payment proof is already under review.');
@@ -1265,7 +1280,7 @@ router.post('/orders/:id/razorpay/order', ...roleGuard(request => request.app.lo
   const store = request.app.locals.store;
   const order = await scopedOrder(store, request, request.params.id);
   if (!order) return responseError(response, 'Order not found or access is not allowed.', 404);
-  if (order.status !== 'awaiting_approval') return responseError(response, 'Online payment is available after the completed work is submitted.');
+  if (!['awaiting_payment', 'awaiting_approval'].includes(order.status)) return responseError(response, 'Online payment is not available at this stage.');
   if (!ownsOrder(order, request.auth) && !isStaff(request.auth)) return responseError(response, 'Only the job owner can pay for this job.', 403);
   if (completedPayment(order.payment_status)) return responseError(response, 'This order is already paid.');
   const amount = Math.round(asNumber(order.payable_amount || order.fee_amount) * 100);
@@ -1283,7 +1298,7 @@ router.post('/orders/:id/razorpay/order', ...roleGuard(request => request.app.lo
 router.post('/orders/:id/razorpay/verify', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'client', 'partner', 'partners'), asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
   const order = await scopedOrder(store, request, request.params.id);
-  if (!order || order.status !== 'awaiting_approval') return responseError(response, 'This job is not ready for payment verification.', 422);
+  if (!order || !['awaiting_payment', 'awaiting_approval'].includes(order.status)) return responseError(response, 'This job is not ready for payment verification.', 422);
   if (!ownsOrder(order, request.auth) && !isStaff(request.auth)) return responseError(response, 'Only the job owner can pay for this job.', 403);
   const gatewayOrderId = String(request.body.razorpay_order_id || '').trim();
   const paymentId = String(request.body.razorpay_payment_id || '').trim();
@@ -1294,7 +1309,10 @@ router.post('/orders/:id/razorpay/verify', ...roleGuard(request => request.app.l
   const payment = existing
     ? await store.update('payments', { id: existing.id }, { amount, method: 'razorpay', gateway: 'razorpay', gateway_payment_id: paymentId, gateway_signature: signature, status: 'verified', received_at: isoNow(), updated_at: isoNow() })
     : await store.insert('payments', { order_id: order.id, amount, method: 'razorpay', gateway: 'razorpay', gateway_order_id: gatewayOrderId, gateway_payment_id: paymentId, gateway_signature: signature, status: 'verified', received_by: request.auth.user.id, received_at: isoNow(), created_at: isoNow(), updated_at: isoNow() });
-  const updated = await store.update('orders', { id: order.id }, { payment_method: 'razorpay', payment_status: 'verified', payment_reference: paymentId, paid_at: isoNow(), updated_at: isoNow() });
+  const updated = await store.update('orders', { id: order.id }, {
+    payment_method: 'razorpay', payment_status: 'verified', payment_reference: paymentId, paid_at: isoNow(),
+    ...(order.status === 'awaiting_payment' ? { status: 'submitted' } : {}), updated_at: isoNow()
+  });
   let invoice = await store.findOne('invoices', { order_id: order.id });
   if (!invoice) invoice = await store.insert('invoices', { order_id: order.id, client_id: order.client_id, invoice_no: `INV-${String(order.id).padStart(5, '0')}`, issue_date: isoNow().slice(0, 10), subtotal: amount, tax_percent: 0, tax_amount: 0, total_amount: amount, paid_amount: amount, status: 'paid', notes: 'Razorpay payment', created_at: isoNow(), updated_at: isoNow(), partner_id: order.partner_id || null });
   await store.update('payments', { id: payment.id }, { invoice_id: invoice.id });
@@ -1311,7 +1329,12 @@ router.post('/orders/:id/payment', ...roleGuard(request => request.app.locals.st
   const payment = pendingPayment
     ? await store.update('payments', { id: pendingPayment.id }, { amount, method: request.body.method || pendingPayment.method || 'manual', reference_no: request.body.reference_no || pendingPayment.reference_no || '', notes: request.body.notes || pendingPayment.notes || '', received_by: request.auth.user.id, received_at: reviewStatus === 'verified' ? isoNow() : null, status: reviewStatus, updated_at: isoNow(), partner_id: order.partner_id || null })
     : await store.insert('payments', { invoice_id: null, order_id: order.id, amount, method: request.body.method || 'manual', reference_no: request.body.reference_no || '', notes: request.body.notes || '', received_by: request.auth.user.id, received_at: reviewStatus === 'verified' ? isoNow() : null, status: reviewStatus, created_at: isoNow(), partner_id: order.partner_id || null });
-  const updated = await store.update('orders', { id: order.id }, { payment_status: reviewStatus, payment_method: request.body.method || order.payment_method || 'manual', payment_reference: request.body.reference_no || order.payment_reference || '', updated_at: isoNow() });
+  const updated = await store.update('orders', { id: order.id }, {
+    payment_status: reviewStatus, payment_method: request.body.method || order.payment_method || 'manual',
+    payment_reference: request.body.reference_no || order.payment_reference || '',
+    ...(reviewStatus === 'verified' && order.status === 'awaiting_payment' ? { status: 'submitted' } : {}),
+    updated_at: isoNow()
+  });
   if (reviewStatus !== 'verified') return response.json({ ok: true, order: await resolveOrder(store, updated, request.auth) });
   let invoice = await store.findOne('invoices', { order_id: order.id });
   if (!invoice) {
