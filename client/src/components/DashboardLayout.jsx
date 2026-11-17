@@ -20,12 +20,22 @@ const nav = {
   client: [['Dashboard', '/dashboard', 'dashboard'], ['My orders', '/client/orders', 'orders'], ['Services', '/services', 'briefcase'], ['Support', '/support', 'support'], ['Profile', '/client/profile', 'userCircle']]
 };
 
+function urlBase64ToUint8Array(value) {
+  const padded = String(value || '') + '='.repeat((4 - String(value || '').length % 4) % 4);
+  const binary = window.atob(padded.replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
 export default function DashboardLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [sidebar, setSidebar] = useState(false);
   const [premiumMode, setPremiumMode] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [pushSupported, setPushSupported] = useState(null);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushMessage, setPushMessage] = useState('');
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [site, setSite] = useState({ site_name: 'TaxSaathi', site_logo: '' });
   const role = user?.role?.slug || 'client';
@@ -47,6 +57,92 @@ export default function DashboardLayout() {
     });
   }
   const unread = notifications.filter((item) => !item.is_read).length;
+
+  useEffect(() => {
+    let active = true;
+    async function restorePushSubscription() {
+      const supported = Boolean(
+        window.isSecureContext &&
+        'serviceWorker' in navigator &&
+        'PushManager' in window &&
+        'Notification' in window
+      );
+      if (!active) return;
+      setPushSupported(supported);
+      if (!supported || Notification.permission !== 'granted') return;
+      const registration = await navigator.serviceWorker.register('/push-sw.js', { scope: '/' });
+      const subscription = await registration.pushManager.getSubscription();
+      if (!subscription) return;
+      await api('/notifications/push-subscription', {
+        method: 'POST',
+        body: { subscription: subscription.toJSON() }
+      }).catch(() => {});
+      if (active) setPushEnabled(true);
+    }
+    restorePushSubscription().catch(() => {
+      if (active) setPushMessage('Could not sync push settings for this device.');
+    });
+    return () => { active = false; };
+  }, [user?.id]);
+
+  async function togglePushNotifications() {
+    if (pushBusy) return;
+    setPushBusy(true);
+    setPushMessage('');
+    try {
+      if (pushEnabled) {
+        const registration = await navigator.serviceWorker.getRegistration('/');
+        const subscription = await registration?.pushManager?.getSubscription();
+        if (subscription) {
+          await api('/notifications/push-subscription', {
+            method: 'DELETE',
+            body: { endpoint: subscription.endpoint }
+          }).catch(() => {});
+          await subscription.unsubscribe().catch(() => false);
+        }
+        setPushEnabled(false);
+        setPushMessage('Push notifications are off on this device.');
+        return;
+      }
+      if (!pushSupported) throw new Error('Push notifications are not available in this browser.');
+      if (Notification.permission === 'denied') {
+        throw new Error('Notifications are blocked. Allow them in this site’s browser settings.');
+      }
+      let permission = Notification.permission;
+      if (permission === 'default') permission = await Notification.requestPermission();
+      if (permission !== 'granted') throw new Error('Allow notifications to enable device alerts.');
+      const config = await api('/notifications/push-public-key');
+      if (!config.enabled || !config.public_key) throw new Error('Push alerts are not configured yet.');
+      const registration = await navigator.serviceWorker.register('/push-sw.js', { scope: '/' });
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(config.public_key)
+        });
+      }
+      await api('/notifications/push-subscription', {
+        method: 'POST',
+        body: { subscription: subscription.toJSON() }
+      });
+      setPushEnabled(true);
+      setPushMessage('Push notifications are enabled on this device.');
+    } catch (error) {
+      setPushMessage(error.message || 'Could not update push notification settings.');
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  const pushDetail = pushSupported === null
+    ? 'Checking browser support…'
+    : !pushSupported
+      ? 'Not available in this browser'
+      : pushEnabled
+        ? 'Enabled on this device'
+        : typeof Notification !== 'undefined' && Notification.permission === 'denied'
+          ? 'Blocked in browser settings'
+          : 'Receive alerts while the app is in the background';
 
   useEffect(() => {
     api('/notifications?limit=30').then((payload) => setNotifications(payload.items || [])).catch(() => {});
@@ -98,7 +194,7 @@ export default function DashboardLayout() {
         <header className="dashboard-header">
           <div className="header-left"><button className="icon-button mobile-only" onClick={() => setSidebar(true)}><Icon name="menu" /></button><div><div className="breadcrumb"><span>TaxSaathi</span><i>•</i><span>{user?.role?.name || 'Workspace'}</span></div><h1>{pageName}</h1></div></div>
           <label className="dashboard-search"><Icon name="search" size={15} /><input aria-label="Search workspace" placeholder="Search pages, orders, charts…" /><kbd>⌘K</kbd></label>
-          <div className="header-actions"><div className="notification-wrap"><button className="notification-button" onClick={() => setNotificationOpen((value) => !value)}><Icon name="bell" size={19} />{unread > 0 && <em>{unread > 99 ? '99+' : unread}</em>}</button>{notificationOpen && <div className="notification-panel"><div className="notification-panel-head"><div><small>Activity center</small><strong>Notifications</strong></div><button onClick={markAllRead}>Mark all read</button></div><div className="notification-list">{notifications.length ? notifications.slice(0, 12).map((item) => <button key={`${item.id}-${item.uid || ''}`} className={`notification-item ${item.is_read ? '' : 'unread'}`} onClick={() => markRead(item.id)}><span className={`notification-dot ${item.severity || 'info'}`} /><span><strong>{item.title}</strong><small>{item.message}</small><i>{item.time_ago || 'Recently'}</i></span></button>) : <div className="empty-panel">No new activity.</div>}</div><Link to="/notifications" className="notification-footer" onClick={() => setNotificationOpen(false)}>Open notification center <Icon name="arrow" size={14} /></Link></div>}</div><div className="profile-chip"><span className="avatar small">{(user?.name || 'U').slice(0, 1).toUpperCase()}</span><span>{user?.name || 'User'}</span><Icon name="chevronDown" size={14} /></div></div>
+          <div className="header-actions"><div className="notification-wrap"><button className="notification-button" onClick={() => setNotificationOpen((value) => !value)}><Icon name="bell" size={19} />{unread > 0 && <em>{unread > 99 ? '99+' : unread}</em>}</button>{notificationOpen && <div className="notification-panel"><div className="notification-panel-head"><div><small>Activity center</small><strong>Notifications</strong></div><button onClick={markAllRead}>Mark all read</button></div><div className="notification-push-control"><span className="notification-push-copy"><strong>Device push alerts</strong><small>{pushDetail}</small></span><button className="button light small" type="button" disabled={pushSupported === null || !pushSupported || pushBusy} onClick={togglePushNotifications}>{pushBusy ? "Saving…" : pushEnabled ? "Turn off" : "Enable"}</button></div>{pushMessage && <p className="notification-push-message" role="status">{pushMessage}</p>}<div className="notification-list">{notifications.length ? notifications.slice(0, 12).map((item) => <button key={`${item.id}-${item.uid || ''}`} className={`notification-item ${item.is_read ? '' : 'unread'}`} onClick={() => markRead(item.id)}><span className={`notification-dot ${item.severity || 'info'}`} /><span><strong>{item.title}</strong><small>{item.message}</small><i>{item.time_ago || 'Recently'}</i></span></button>) : <div className="empty-panel">No new activity.</div>}</div><Link to="/notifications" className="notification-footer" onClick={() => setNotificationOpen(false)}>Open notification center <Icon name="arrow" size={14} /></Link></div>}</div><div className="profile-chip"><span className="avatar small">{(user?.name || 'U').slice(0, 1).toUpperCase()}</span><span>{user?.name || 'User'}</span><Icon name="chevronDown" size={14} /></div></div>
         </header>
         <main className="dashboard-content"><Outlet /></main>
         <nav className="mobile-bottom-nav">{navItems.slice(0, 5).map(([label, path, icon]) => <Link key={path} to={path} className={isActive(path) ? 'active' : ''}><Icon name={icon} size={18} /><span>{label.split(' ')[0]}</span></Link>)}</nav>
