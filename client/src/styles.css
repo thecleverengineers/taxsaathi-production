@@ -2362,3 +2362,27 @@ h1, h2, h3, strong { letter-spacing: -.025em; }
   background: linear-gradient(145deg, #fff8dc, #ead8a6);
   box-shadow: 0 8px 20px rgba(122, 93, 27, .1);
 }
+
+
+/* Browser push preferences inside the notification panel. */
+.notification-push-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #e8edf3;
+  background: #f8fbff;
+}
+.notification-push-copy { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.notification-push-copy strong { color: var(--ink); font-size: 11px; }
+.notification-push-copy small { color: var(--muted); font-size: 9px; line-height: 1.4; }
+.notification-push-control .button { flex: 0 0 auto; }
+.notification-push-message {
+  margin: 0;
+  padding: 8px 14px;
+  color: var(--muted);
+  background: #fff;
+  font-size: 10px;
+  line-height: 1.45;
+}
