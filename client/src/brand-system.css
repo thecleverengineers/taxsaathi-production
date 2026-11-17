@@ -382,3 +382,74 @@ body {font-family:var(--ts-font);color:var(--ink);background:var(--surface-soft)
   :where(.dashboard-app,.public-site) *, :where(.dashboard-app,.public-site) *::before,
   :where(.dashboard-app,.public-site) *::after {animation-duration:.01ms!important;scroll-behavior:auto!important;transition-duration:.01ms!important}
 }
+
+
+/* Keep the reporting dashboard in the same palette, without changing semantic statuses. */
+.dashboard-app .dashboard-overview-head h2,
+.dashboard-app .dashboard-panel-heading h3,
+.dashboard-app .dashboard-analytics-heading h3 {color:#102e55}
+.dashboard-app .dashboard-overline,
+.dashboard-app .dashboard-panel-heading>div>span,
+.dashboard-app .dashboard-panel-link {color:#a87829}
+.dashboard-app .dashboard-primary-button {
+  background:linear-gradient(110deg,#b7822b,#f3d17a);color:#0e2c53;
+  border:1px solid #d8ab50;min-height:37px;border-radius:10px;
+  box-shadow:0 8px 17px #b17b2b26
+}
+.dashboard-app .dashboard-primary-button:hover {color:#0a2548;background:#f6d989}
+.dashboard-app .dashboard-outline-button {color:#1e436f;border-color:#d7dfe9;border-radius:10px}
+.dashboard-app .dashboard-outline-button:hover {color:#a47025;border-color:#bf9348}
+.dashboard-app .dashboard-kpi-card {
+  background:linear-gradient(145deg,#fffefa,#f5f2ea);
+  color:#17355a;border:1px solid #e1d8c9;border-radius:14px;
+  box-shadow:0 8px 23px #0a23480d
+}
+.dashboard-app .dashboard-kpi-card::after {border-color:#d5b67d40}
+.dashboard-app .dashboard-kpi-top span {color:#64748b;opacity:1}
+.dashboard-app .dashboard-kpi-bottom,.dashboard-app .dashboard-kpi-bottom small {color:#67788b}
+.dashboard-app .dashboard-kpi-top svg,.dashboard-app .dashboard-kpi-bottom b {color:#bd8c37}
+.dashboard-app .dashboard-command-center {
+  background:linear-gradient(120deg,#071c3a,#173c65);border-color:#bf985880;border-radius:17px;
+  box-shadow:0 13px 31px #0b264728
+}
+.dashboard-app .dashboard-command-heading p {color:#c3d3e2}
+.dashboard-app .dashboard-command-heading .dashboard-overline,
+.dashboard-app .dashboard-command-heading .dashboard-panel-link {color:#f4d78d}
+.dashboard-app .dashboard-command-metric {
+  border-color:#dfc38b35;background:#ffffff12;border-radius:12px;color:#fff
+}
+.dashboard-app .dashboard-command-metric small {color:#d2dfec}
+.dashboard-app .dashboard-command-metric em {color:#c9b58a}
+.dashboard-app .dashboard-command-metric>svg {color:#f0d28c}
+.dashboard-app .dashboard-command-metric .dashboard-command-icon {color:#f7d992;background:#edd39d24}
+.dashboard-app .dashboard-analytics-shell {
+  background:linear-gradient(135deg,#fcfbf7,#fff 57%,#f3f5fa);border-color:#dfdfd9;border-radius:17px
+}
+.dashboard-app .dashboard-reference-panel,.dashboard-app .dashboard-utilization-card {
+  border-color:#e3e6eb;border-radius:13px;background:#fff
+}
+.dashboard-app .dashboard-live-pill {color:#9d6f2d;background:#fbefd8}
+.dashboard-app .dashboard-period-pill {color:#667891;background:#f0f3f7}
+.dashboard-app .dashboard-donut strong,.dashboard-app .dashboard-legend b,
+.dashboard-app .dashboard-utilization-card strong,.dashboard-app .dashboard-order-list .order-main strong,
+.dashboard-app .dashboard-order-list .order-side strong,.dashboard-app .dashboard-activity-row strong {color:#1e3a5c}
+.dashboard-app .dashboard-utilization-icon {background:#fbefd7;color:#a77324}
+.dashboard-app .dashboard-order-list .order-number {color:#a87829}
+.dashboard-app .dashboard-utilization-card>span {background:#edf1f6}
+.dashboard-app .dashboard-utilization-card>span i {background:#b98632}
+.dashboard-app .dashboard-utilization-card:nth-child(2)>span i {background:#255281}
+.dashboard-app .dashboard-utilization-card:nth-child(3)>span i {background:#daa748}
+.dashboard-app .dashboard-utilization-card:nth-child(4)>span i {background:#7491ac}
+.dashboard-app .dashboard-column-chart {
+  background:repeating-linear-gradient(to bottom,transparent 0,transparent 39px,#e8edf3 40px);
+  border-color:#dce3ed
+}
+/* Prevent Safari focus-zoom and provide comfortable mobile targets for editable forms. */
+@media (max-width:760px) {
+  .dashboard-app .dashboard-content :is(input:not([type="checkbox"]):not([type="radio"]),textarea,select),
+  .ts-brand-site main :is(input:not([type="checkbox"]):not([type="radio"]),textarea,select) {
+    font-size:16px
+  }
+  .dashboard-app .filter-panel button,.dashboard-app .page-intro-actions a,
+  .ts-brand-site .service-toolbar button {min-height:42px}
+}
