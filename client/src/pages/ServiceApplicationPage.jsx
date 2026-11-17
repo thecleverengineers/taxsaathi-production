@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../components/AuthContext';
@@ -35,7 +35,8 @@ export default function ServiceApplicationPage() {
   const { user } = useAuth();
   const draftKey = `taxsaathi-apply-draft:${slug}`;
   const draft = readDraft(draftKey);
-  const submissionKey = draft.idempotency_key || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+  const submissionKeyRef = useRef(draft.idempotency_key || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())));
+  const submissionKey = submissionKeyRef.current;
   const [data, setData] = useState(null);
   const [form, setForm] = useState({
     customer_name: draft.customer_name || user?.name || '',
@@ -155,6 +156,7 @@ export default function ServiceApplicationPage() {
       feedback(`Please add: ${missing.map((item) => item.label).join(', ')}`);
       return;
     }
+    saveDraft();
     setSubmitting(true);
     try {
       const contactNotes = [
