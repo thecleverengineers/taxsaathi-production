@@ -1316,6 +1316,10 @@ router.post('/orders/:id/razorpay/verify', ...roleGuard(request => request.app.l
   let invoice = await store.findOne('invoices', { order_id: order.id });
   if (!invoice) invoice = await store.insert('invoices', { order_id: order.id, client_id: order.client_id, invoice_no: `INV-${String(order.id).padStart(5, '0')}`, issue_date: isoNow().slice(0, 10), subtotal: amount, tax_percent: 0, tax_amount: 0, total_amount: amount, paid_amount: amount, status: 'paid', notes: 'Razorpay payment', created_at: isoNow(), updated_at: isoNow(), partner_id: order.partner_id || null });
   await store.update('payments', { id: payment.id }, { invoice_id: invoice.id });
+  if (order.status === 'awaiting_payment') {
+    await notify(store, { userId: order.submitted_by_user_id, title: 'Payment verified', message: `${order.order_no} is now in the service work queue.`, severity: 'success', url: `/client/orders/${order.id}`, orderId: order.id });
+    await notify(store, { userId: null, title: 'Paid service ready to assign', message: `${order.order_no} is ready for staff assignment.`, severity: 'info', url: `/admin/orders/${order.id}`, orderId: order.id });
+  }
   response.json({ ok: true, message: 'Payment verified successfully.', order: await resolveOrder(store, updated, request.auth) });
 }));
 
@@ -1324,7 +1328,8 @@ router.post('/orders/:id/payment', ...roleGuard(request => request.app.locals.st
   const order = await store.findOne('orders', { id: Number(request.params.id) });
   if (!order) return responseError(response, 'Order not found.', 404);
   const reviewStatus = String(request.body.status || 'verified').toLowerCase();
-  const amount = asNumber(request.body.amount || order.payable_amount || order.fee_amount);
+  if (!['verified', 'rejected'].includes(reviewStatus)) return responseError(response, 'Payment review must be verified or rejected.', 422);
+  const amount = asNumber(order.payable_amount || order.fee_amount);
   const pendingPayment = await store.findOne('payments', { order_id: order.id, status: 'pending_review' }, { sort: { id: -1 } });
   const payment = pendingPayment
     ? await store.update('payments', { id: pendingPayment.id }, { amount, method: request.body.method || pendingPayment.method || 'manual', reference_no: request.body.reference_no || pendingPayment.reference_no || '', notes: request.body.notes || pendingPayment.notes || '', received_by: request.auth.user.id, received_at: reviewStatus === 'verified' ? isoNow() : null, status: reviewStatus, updated_at: isoNow(), partner_id: order.partner_id || null })
@@ -1343,6 +1348,10 @@ router.post('/orders/:id/payment', ...roleGuard(request => request.app.locals.st
     invoice = await store.update('invoices', { id: invoice.id }, { paid_amount: amount, status: 'paid', updated_at: isoNow() });
   }
   await store.update('payments', { id: payment.id }, { invoice_id: invoice.id });
+  if (order.status === 'awaiting_payment') {
+    await notify(store, { userId: order.submitted_by_user_id, title: 'Payment verified', message: `${order.order_no} is now in the service work queue.`, severity: 'success', url: `/client/orders/${order.id}`, orderId: order.id });
+    await notify(store, { userId: null, title: 'Paid service ready to assign', message: `${order.order_no} is ready for staff assignment.`, severity: 'info', url: `/admin/orders/${order.id}`, orderId: order.id });
+  }
   response.json({ ok: true, order: await resolveOrder(store, updated, request.auth) });
 }));
 

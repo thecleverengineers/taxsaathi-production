@@ -150,6 +150,7 @@ export class DataStore {
       ],
       service_requirements: [{ key: { service_id: 1, sort_order: 1 }, name: 'service_requirements_service' }],
       orders: [
+        { key: { submitted_by_user_id: 1, idempotency_key: 1 }, name: 'orders_submission_idempotency', unique: true, partialFilterExpression: { idempotency_key: { $type: 'string' } } },
         { key: { client_id: 1, id: -1 }, name: 'orders_client_recent' },
         { key: { assigned_user_id: 1, id: -1 }, name: 'orders_assignee_recent' },
         { key: { partner_id: 1, id: -1 }, name: 'orders_partner_recent' },

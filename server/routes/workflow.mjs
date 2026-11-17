@@ -290,7 +290,7 @@ router.post('/orders/:id/revisions/:revisionId/decision', ...guard('admin', 'man
     await store.update('orders', { id: Number(order.id), status: 'completed' }, { status: 'work_in_progress', revision_reason: revision.reason, updated_at: isoNow() });
     await notify(store, order.assigned_user_id, 'Revision work assigned', order.order_no + ': ' + revision.reason.slice(0, 160), '/admin/orders/' + order.id, order.id);
   }
-  if (order.submitted_by_user_id) await notify(store, order.submitted_by_user_id, 'Revision request ' + decision, order.order_no + ' revision request was ' + decision + '.', isPartner(req.auth) ? '/partner/jobs/' + order.id : '/client/orders/' + order.id, order.id);
+  if (order.submitted_by_user_id) await notify(store, order.submitted_by_user_id, 'Revision request ' + decision, order.order_no + ' revision request was ' + decision + '.', ['partner', 'partners'].includes(String(order.submitter_role || '')) ? '/partner/jobs/' + order.id : '/client/orders/' + order.id, order.id);
   await recordAudit(store, req, { action: 'deliverable.revision.' + decision, resourceType: 'orders', resourceId: order.id, reason: revision.reason });
   res.json({ ok: true, revision: updated, status: decision === 'approved' ? 'work_in_progress' : order.status });
 }));
