@@ -1060,6 +1060,7 @@ router.get('/corporate/overview', authRequired((request) => request.app.locals.s
   const client = await store.findOne('clients', { id: Number(request.auth.user.client_id) });
   if (!client || String(client.client_type).toLowerCase() !== 'corporate') return responseError(response, 'This account is not a Corporate client.', 403);
   const orders = await store.find('orders', { client_id: Number(client.id) }, { sort: { id: -1 }, limit: 250 });
+  const events = await store.find('corporate_compliance_events', { client_id: Number(client.id) }, { sort: { due_date: 1, id: -1 }, limit: 100 });
   const outstanding = orders.filter(row => !['verified','paid','approved'].includes(String(row.payment_status||'').toLowerCase()));
   const deadlines = orders.filter(row => row.due_date && !['completed','closed','cancelled'].includes(String(row.status||'').toLowerCase()))
     .map(row => ({ id: row.id, order_no: row.order_no, due_date: row.due_date, status: row.status }))
@@ -1068,10 +1069,51 @@ router.get('/corporate/overview', authRequired((request) => request.app.locals.s
     contact_person: client.contact_person, email: client.email, phone: client.phone, client_type: 'corporate' },
     summary: { total_orders: orders.length, open_orders: orders.filter(row => !['completed','closed','cancelled'].includes(String(row.status||'').toLowerCase())).length,
       outstanding_payments: outstanding.length, completed_orders: orders.filter(row => ['completed','closed'].includes(String(row.status||'').toLowerCase())).length },
-    deadlines, orders: orders.slice(0, 25).map(row => ({
+    deadlines, events: events.map(row => ({ id: row.id, title: row.title, due_date: row.due_date,
+      notes: row.notes || '', status: row.status || 'open', source: 'manual' })),
+    orders: orders.slice(0, 25).map(row => ({
       id: row.id, order_no: row.order_no, status: row.status, payment_status: row.payment_status,
       fee_amount: row.fee_amount, due_date: row.due_date, created_at: row.created_at
     })), truncated: orders.length >= 250 });
+}));
+
+async function corporateClientFor(request) {
+  if (roleSlug(request.auth) !== 'client' || !request.auth.user.client_id) return null;
+  const company = await request.app.locals.store.findOne('clients', { id: Number(request.auth.user.client_id) });
+  return String(company?.client_type || '').toLowerCase() === 'corporate' ? company : null;
+}
+
+router.post('/corporate/deadlines', authRequired(request => request.app.locals.store), asyncRoute(async (request, response) => {
+  const company = await corporateClientFor(request);
+  if (!company) return responseError(response, 'Corporate client access required.', 403);
+  const title = String(request.body.title || '').trim().slice(0, 140);
+  const due = String(request.body.due_date || '').trim();
+  const notes = String(request.body.notes || '').trim().slice(0, 1000);
+  if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(due) || Number.isNaN(new Date(due + 'T00:00:00Z').valueOf()) ||
+    new Date(due + 'T00:00:00Z').toISOString().slice(0, 10) !== due) {
+    return responseError(response, 'A title and valid due date are required.', 422);
+  }
+  const row = await request.app.locals.store.insert('corporate_compliance_events', {
+    client_id: Number(company.id), title, due_date: due, notes, status: 'open',
+    created_by: Number(request.auth.user.id), created_at: isoNow(), updated_at: isoNow()
+  });
+  await recordAudit(request.app.locals.store, request, { action: 'corporate.deadline.created', resourceType: 'corporate_compliance_event', resourceId: row.id });
+  response.status(201).json({ ok: true, event: { id: row.id, title, due_date: due, notes, status: 'open' } });
+}));
+
+router.patch('/corporate/deadlines/:id', authRequired(request => request.app.locals.store), asyncRoute(async (request, response) => {
+  const company = await corporateClientFor(request);
+  if (!company) return responseError(response, 'Corporate client access required.', 403);
+  const status = String(request.body.status || '').trim().toLowerCase();
+  if (!['open', 'completed'].includes(status)) return responseError(response, 'Invalid reminder status.', 422);
+  const id = Number(request.params.id);
+  const match = await request.app.locals.store.findOne('corporate_compliance_events', { id, client_id: Number(company.id) });
+  if (!match) return responseError(response, 'Reminder not found.', 404);
+  const updated = await request.app.locals.store.update('corporate_compliance_events', { id, client_id: Number(company.id) }, {
+    status, updated_at: isoNow()
+  });
+  await recordAudit(request.app.locals.store, request, { action: 'corporate.deadline.updated', resourceType: 'corporate_compliance_event', resourceId: id });
+  response.json({ ok: true, event: { id: updated.id, title: updated.title, due_date: updated.due_date, status: updated.status } });
 }));
 
 router.patch('/corporate/company', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
