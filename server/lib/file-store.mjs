@@ -8,7 +8,8 @@ import { GridFSBucket, ObjectId } from 'mongodb';
 const projectRoot = path.resolve(process.cwd());
 const localRoots = {
   documents: path.resolve(projectRoot, 'server/storage/documents'),
-  payment: path.resolve(projectRoot, 'server/storage/payment')
+  payment: path.resolve(projectRoot, 'server/storage/payment'),
+  homepage: path.resolve(projectRoot, 'server/storage/homepage')
 };
 const legacyRoot = path.resolve(projectRoot, 'legacy/taxsaathi');
 
@@ -74,14 +75,15 @@ export async function saveUpload(store, file, { folder = 'documents', metadata =
 export async function streamStoredFile(store, reference, response, {
   localFolder = 'documents',
   downloadName = '',
-  fallbackRoot = null
+  fallbackRoot = null,
+  contentType = null
 } = {}) {
   const objectId = asObjectId(reference);
   const bucket = bucketFor(store);
   if (objectId && bucket) {
     const metadata = await bucket.find({ _id: objectId }).next();
     if (!metadata) return false;
-    response.setHeader('Content-Type', metadata.contentType || 'application/octet-stream');
+    response.setHeader('Content-Type', contentType || metadata.contentType || 'application/octet-stream');
     response.setHeader('Content-Length', String(metadata.length || 0));
     response.setHeader('Content-Disposition', `inline; filename="${safeFilename(downloadName || metadata.filename)}"`);
     await new Promise((resolve, reject) => bucket.openDownloadStream(objectId).once('end', resolve).once('error', reject).pipe(response));
@@ -100,7 +102,7 @@ export async function streamStoredFile(store, reference, response, {
     try {
       const stat = await fsPromises.stat(target);
       const filename = path.basename(target);
-      response.setHeader('Content-Type', 'application/octet-stream');
+      response.setHeader('Content-Type', contentType || 'application/octet-stream');
       response.setHeader('Content-Length', String(stat.size));
       response.setHeader('Content-Disposition', `inline; filename="${safeFilename(downloadName || filename)}"`);
       await new Promise((resolve, reject) => fs.createReadStream(target).once('end', resolve).once('error', reject).pipe(response));
