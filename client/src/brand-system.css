@@ -931,3 +931,7 @@ body {font-family:var(--ts-font);color:var(--ink);background:var(--surface-soft)
   .ts-brand-site .application-form-card {padding: 13px}
   .ts-brand-site .application-section {padding: 13px}
 }
+
+/* Do not present unavailable payment routes as actionable. */
+.ts-brand-site .application-payment-choice:has(input:disabled) {opacity:.65;cursor:not-allowed;border-style:dashed}
+.ts-brand-site .application-payment-choice.selected:has(input:disabled) {opacity:.85}
