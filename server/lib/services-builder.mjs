@@ -12,7 +12,7 @@ const FIELDS = {
 };
 
 const TEXT_LIMIT = 800;
-const SAFE_LINK = /^(?:https?:\/\/|\/(?!\/)|#(?:[a-z\d_-]+)?)$/i;
+const SAFE_LINK = /^(?:https?:\/\/[^\\s]+|\/(?!\/)[^\\s]*|#(?:[a-z\\d_-]+)?)$/i;
 const SAFE_MEDIA = /^(?:https:\/\/|\/(?!\/))/i;
 
 function simpleString(value, limit = TEXT_LIMIT) {
