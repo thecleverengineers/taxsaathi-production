@@ -180,7 +180,7 @@ export default function ServicesPage() {
       </>}
       {!browsing && data && !unavailable && <>
         {browser.showResultsCount !== false && <p className="ts-services-status" role="status">{data.pagination?.total ?? data.services.length} {browser.resultsSuffix}</p>}
-        {data.services?.length ? (cards.enabled !== false ? <div className="service-grid wide">
+        {data.services?.length ? (cards.enabled !== false ? <div className="service-grid ts-services-results">
           {data.services.map((service) => <ServiceCard key={service.id} service={service}
             contact={{ phone: site.site_phone, whatsapp: site.site_whatsapp }} presentation={cards} />)}
         </div> : <p className="ts-services-status">Service cards are hidden.</p>) : <EmptyState icon="search"

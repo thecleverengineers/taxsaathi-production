@@ -223,3 +223,74 @@
 .ts-services-controls.is-single>*{flex:1 1 230px;max-width:360px}
 .ts-services-controls.is-single .ts-services-search input{width:100%}
 @media(max-width:680px){.ts-services-controls.is-single{display:flex;justify-content:stretch}.ts-services-controls.is-single>*{max-width:none;width:100%}}
+
+.ts-services .ts-services-results {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  max-width: 1180px;
+  gap: 18px;
+}
+.ts-services-results .service-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  padding: clamp(16px, 2vw, 26px);
+  border: 1px solid var(--services-line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 20px #0c1b310a;
+}
+.ts-services-results .service-card:hover,
+.ts-services-results .service-card:focus-within {
+  border-color: #b18543;
+}
+.ts-services-results .service-card-icon {
+  width: 88px;
+  height: 88px;
+  padding: 8px;
+  border: 1px solid #ede2d0;
+  border-radius: 12px;
+  background: #fbf6ed;
+  color: #80591e;
+}
+.ts-services-results .service-card-icon img {
+  object-fit: contain;
+}
+.ts-services-results .service-card-meta {
+  margin-top: 16px;
+  color: #73501b;
+  font-size: 11px;
+}
+.ts-services-results .service-card h3 {
+  color: var(--services-ink);
+  font-size: clamp(19px, 2vw, 24px);
+  line-height: 1.25;
+}
+.ts-services-results .service-card p {
+  color: #515b6b;
+  font-size: 14px;
+}
+.ts-services-results .service-card-bottom { border-color: var(--services-line); }
+.ts-services-results .service-card-price-row { flex-wrap: wrap; }
+.ts-services-results .service-card-price-row strong { color: var(--services-ink); font-size: 19px; }
+.ts-services-results .service-card-view { color: #73501b; font-size: 13px; }
+.ts-services-results .service-card-action {
+  min-height: 44px;
+  font-size: 12px;
+  white-space: normal;
+  text-align: center;
+}
+.ts-services-results .service-card-action.apply {
+  border-color: var(--services-gold);
+  background: var(--services-gold);
+  color: var(--services-ink);
+}
+.ts-services-results .service-card-action.apply:hover {
+  border-color: #bb903e;
+  background: #efcc91;
+  color: var(--services-ink);
+}
+
+@media (max-width: 680px) {
+  .ts-services .ts-services-results { grid-template-columns: 1fr; gap: 12px; }
+}
