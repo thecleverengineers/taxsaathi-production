@@ -1,0 +1,7 @@
+/* Preserve original Tax Saathi sections while letting the CMS render them in any order. */
+.ts-home-dynamic{display:flex;flex-direction:column;width:100%;min-width:0}
+.ts-home-dynamic-slot{display:block;flex:0 0 auto;width:100%;min-width:0}
+.ts-home-dynamic-slot>.container-wide{width:calc(100% - 48px);max-width:var(--container-wide,1380px);margin-left:auto;margin-right:auto}
+.ts-home .ts-image-hero-video{display:block;width:100%;height:100%;object-fit:cover;background:#142d49}
+.ts-home-preview-marker{padding:11px 18px;background:#f8e9be;color:#70511a;font-size:12px;font-weight:800;text-align:center;letter-spacing:.08em}
+@media(max-width:640px){.ts-home-dynamic-slot>.container-wide{width:calc(100% - 32px)}}
