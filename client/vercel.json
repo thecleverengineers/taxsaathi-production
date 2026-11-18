@@ -1,0 +1,40 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://taxsaathi-3q5k.onrender.com/api/:path*"
+    },
+    {
+      "source": "/legacy-assets/:path*",
+      "destination": "https://taxsaathi-3q5k.onrender.com/legacy-assets/:path*"
+    },
+    {
+      "source": "/uploads/:path*",
+      "destination": "https://taxsaathi-3q5k.onrender.com/legacy-assets/uploads/:path*"
+    },
+    {
+      "source": "/payment-assets/:path*",
+      "destination": "https://taxsaathi-3q5k.onrender.com/payment-assets/:path*"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "https://taxsaathi-3q5k.onrender.com/sitemap.xml"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/push-sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ]
+}
