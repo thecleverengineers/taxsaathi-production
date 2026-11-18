@@ -58,6 +58,7 @@ export default function ServiceApplicationPage() {
   const [messageType, setMessageType] = useState('danger');
   const [submitting, setSubmitting] = useState(false);
   const [upiAvailable, setUpiAvailable] = useState(null);
+  const [checkoutReady, setCheckoutReady] = useState(null);
 
   useEffect(() => {
     setData(null);
@@ -71,8 +72,9 @@ export default function ServiceApplicationPage() {
         if (!active) return;
         const upiId = String(payment?.upi_id || '').trim();
         setUpiAvailable(Boolean((upiId && upiId !== 'taxsaathi@upi') || payment?.qr_code || payment?.razorpay_enabled));
+        setCheckoutReady(payment?.checkout_payment_choice_enabled === true);
       })
-      .catch(() => { if (active) setUpiAvailable(false); });
+      .catch(() => { if (active) { setUpiAvailable(false); setCheckoutReady(false); } });
     return () => { active = false; };
   }, []);
 
@@ -173,6 +175,10 @@ export default function ServiceApplicationPage() {
       feedback('Choose Pay with UPI or Pay Later before continuing.');
       return;
     }
+    if (!checkoutReady) {
+      feedback('Checkout is being updated. Please retry after the backend deployment is complete.');
+      return;
+    }
     if (paymentChoice === 'upi' && !upiAvailable) {
       feedback('UPI payment is not configured. Choose Pay Later for now, or contact support.');
       return;
@@ -188,6 +194,10 @@ export default function ServiceApplicationPage() {
     setMessage('');
     if (!paymentChoice || !detailsUnlocked) {
       feedback('Choose a payment method first, then continue to the job details.');
+      return;
+    }
+    if (!checkoutReady && !createdOrderRef.current) {
+      feedback('Checkout is temporarily unavailable while the backend update is pending. Please retry shortly.');
       return;
     }
     if (paymentChoice === 'upi' && !upiAvailable && !createdOrderRef.current) {
@@ -319,23 +329,23 @@ export default function ServiceApplicationPage() {
           </div>}
           <fieldset className="application-payment-choice-fieldset" aria-describedby="application-payment-choice-description">
             <legend>Payment options <span>Choose one</span></legend>
-            <p id="application-payment-choice-description">No payment is taken on this screen. Your selection determines the next step after job submission.</p>
+            <p id="application-payment-choice-description">{checkoutReady === null ? 'Checking available payment methods…' : checkoutReady ? 'No payment is taken on this screen. Your selection determines the next step after job submission.' : 'Checkout is being updated on the server. Payments and order submission will be available when the backend update is complete.'}</p>
             <div className="application-payment-choice-grid">
               <label className={`application-payment-choice ${paymentChoice === 'upi' ? 'selected' : ''}`}>
-                <input type="radio" name="payment_choice" value="upi" checked={paymentChoice === 'upi'} onChange={() => choosePayment('upi')} disabled={Boolean(createdOrderRef.current) || upiAvailable !== true} />
+                <input type="radio" name="payment_choice" value="upi" checked={paymentChoice === 'upi'} onChange={() => choosePayment('upi')} disabled={Boolean(createdOrderRef.current) || checkoutReady !== true || upiAvailable !== true} />
                 <span className="application-payment-choice-icon"><Icon name="wallet" size={21} /></span>
                 <span className="application-payment-choice-label"><strong>Pay with UPI</strong><small>{upiAvailable === null ? 'Checking payment availability…' : upiAvailable ? 'Submit the job, then pay using UPI and provide proof. Payment verification is required before work begins.' : 'UPI is not configured yet. Please select Pay Later or contact support.'}</small></span>
                 <Icon name="check" size={19} className="application-payment-choice-check" />
               </label>
               <label className={`application-payment-choice ${paymentChoice === 'pay_later' ? 'selected' : ''}`}>
-                <input type="radio" name="payment_choice" value="pay_later" checked={paymentChoice === 'pay_later'} onChange={() => choosePayment('pay_later')} disabled={Boolean(createdOrderRef.current)} />
+                <input type="radio" name="payment_choice" value="pay_later" checked={paymentChoice === 'pay_later'} onChange={() => choosePayment('pay_later')} disabled={Boolean(createdOrderRef.current) || checkoutReady !== true} />
                 <span className="application-payment-choice-icon"><Icon name="file" size={21} /></span>
                 <span className="application-payment-choice-label"><strong>Pay Later</strong><small>Submit the job now with payment outstanding. An unpaid invoice is recorded for follow-up.</small></span>
                 <Icon name="check" size={19} className="application-payment-choice-check" />
               </label>
             </div>
           </fieldset>
-          {!detailsUnlocked && <button type="button" className="button primary full application-continue-button" disabled={!paymentChoice || (paymentChoice === 'upi' && !upiAvailable)} onClick={continueToJobDetails}>
+          {!detailsUnlocked && <button type="button" className="button primary full application-continue-button" disabled={!paymentChoice || checkoutReady !== true || (paymentChoice === 'upi' && !upiAvailable)} onClick={continueToJobDetails}>
             Continue to job details <Icon name="arrow" size={17} />
           </button>}
           {detailsUnlocked && <>
