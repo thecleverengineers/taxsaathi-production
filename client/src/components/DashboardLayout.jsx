@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from './AuthContext';
 import Icon from './Icons';
+import WorkspaceSearch from './WorkspaceSearch';
 import { statusLabel } from '../lib/format';
 
 const nav = {
@@ -10,7 +11,7 @@ const nav = {
     ['Dashboard', '/dashboard', 'dashboard'], ['Task board', '/admin/workflow', 'activity'], ['Orders', '/admin/orders', 'orders'], ['Clients', '/admin/clients', 'users'], ['Staff workload', '/admin/staff', 'users'], ['Services', '/admin/services', 'briefcase'], ['Users', '/admin/users', 'users'], ['Partners', '/admin/partners', 'users'], ['Executives', '/admin/executive', 'users'], ['Operations', '/admin/operations', 'activity'], ['SEO & marketing', '/admin/marketing', 'trending'], ['Intelligence lab', '/admin/intelligence', 'sparkles'], ['Reports', '/admin/reports', 'bar'], ['Audit logs', '/admin/audit', 'shield'], ['Application management', '/admin/management', 'settings'], ['Coupons & payments', '/admin/payment-settings', 'wallet'], ['Notifications', '/notifications', 'bell'], ['Notification workflows', '/admin/notification-workflows', 'bell'], ['Content & settings', '/admin/content', 'settings']
   ],
   manager: [
-    ['Dashboard', '/dashboard', 'dashboard'], ['Task board', '/admin/workflow', 'activity'], ['Orders', '/admin/orders', 'orders'], ['Clients', '/admin/clients', 'users'], ['Staff workload', '/admin/staff', 'users'], ['Partners', '/admin/partners', 'users'], ['Operations', '/admin/operations', 'activity'], ['Reports', '/admin/reports', 'bar'], ['Audit logs', '/admin/audit', 'shield'], ['Notifications', '/notifications', 'bell'], ['Support inbox', '/support', 'support']
+    ['Dashboard', '/dashboard', 'dashboard'], ['Task board', '/admin/workflow', 'activity'], ['Orders', '/admin/orders', 'orders'], ['Services', '/admin/services', 'briefcase'], ['Clients', '/admin/clients', 'users'], ['Staff workload', '/admin/staff', 'users'], ['Partners', '/admin/partners', 'users'], ['Operations', '/admin/operations', 'activity'], ['Reports', '/admin/reports', 'bar'], ['Audit logs', '/admin/audit', 'shield'], ['Notifications', '/notifications', 'bell'], ['Support inbox', '/support', 'support']
   ],
   executive: [
     ['Dashboard', '/dashboard', 'dashboard'], ['My task board', '/staff/workflow', 'activity'], ['Assigned orders', '/admin/orders', 'orders'], ['Reports', '/admin/reports', 'bar'], ['Payouts', '/executive/payouts', 'wallet'], ['Notifications', '/notifications', 'bell']
@@ -41,7 +42,11 @@ export default function DashboardLayout() {
   const profileMenuRef = useRef(null);
   const [site, setSite] = useState({ site_name: 'TaxSaathi', site_logo: '' });
   const role = user?.role?.slug || 'client';
-  const navItems = useMemo(() => nav[role] || nav.client, [role]);
+  const navItems = useMemo(() => {
+    const items = nav[role] || nav.client;
+    return role === 'client' && String(user?.client_type).toLowerCase() === 'corporate'
+      ? [items[0], ['Company workspace', '/client/company', 'briefcase'], ...items.slice(1)] : items;
+  }, [role, user?.client_type]);
   const premiumStorageKey = user?.id ? `taxsaathi:premium-mode:${user.id}` : '';
 
   useEffect(() => {
@@ -211,10 +216,10 @@ export default function DashboardLayout() {
       <div className="dashboard-main">
         <header className="dashboard-header">
           <div className="header-left"><button className="icon-button mobile-only" aria-label="Open workspace menu" aria-controls="workspace-sidebar" aria-expanded={sidebar} onClick={() => setSidebar(true)}><Icon name="menu" /></button><div><div className="breadcrumb"><span>Tax Saathi</span><i>•</i><span>{user?.role?.name || 'Workspace'}</span></div><h1>{pageName}</h1></div></div>
-          <label className="dashboard-search"><Icon name="search" size={15} /><input aria-label="Search workspace" placeholder="Search pages, orders, charts…" /><kbd>⌘K</kbd></label>
+          <WorkspaceSearch role={role} navItems={navItems} />
           <div className="header-actions"><div className="notification-wrap"><button className="notification-button" onClick={() => setNotificationOpen((value) => !value)}><Icon name="bell" size={19} />{unread > 0 && <em>{unread > 99 ? '99+' : unread}</em>}</button>{notificationOpen && <div className="notification-panel"><div className="notification-panel-head"><div><small>Activity center</small><strong>Notifications</strong></div><button onClick={markAllRead}>Mark all read</button></div><div className="notification-push-control"><span className="notification-push-copy"><strong>Device push alerts</strong><small>{pushDetail}</small></span><button className="button light small" type="button" disabled={pushSupported === null || !pushSupported || pushBusy} onClick={togglePushNotifications}>{pushBusy ? "Saving…" : pushEnabled ? "Turn off" : "Enable"}</button></div>{pushMessage && <p className="notification-push-message" role="status">{pushMessage}</p>}<div className="notification-list">{notifications.length ? notifications.slice(0, 12).map((item) => <button key={`${item.id}-${item.uid || ''}`} className={`notification-item ${item.is_read ? '' : 'unread'}`} onClick={() => markRead(item.id)}><span className={`notification-dot ${item.severity || 'info'}`} /><span><strong>{item.title}</strong><small>{item.message}</small><i>{item.time_ago || 'Recently'}</i></span></button>) : <div className="empty-panel">No new activity.</div>}</div><Link to="/notifications" className="notification-footer" onClick={() => setNotificationOpen(false)}>Open notification center <Icon name="arrow" size={14} /></Link></div>}</div><div className="profile-menu-wrap" ref={profileMenuRef}>
             <button className="profile-chip" type="button" aria-label="Open profile menu" aria-haspopup="menu" aria-expanded={profileOpen} onClick={() => setProfileOpen((value) => !value)}>
-              <span className="avatar small" aria-hidden="true">{(user?.name || 'U').slice(0, 1).toUpperCase()}</span>
+              <span className="avatar small" aria-hidden="true">{user?.avatar_url ? <img src={user.avatar_url} alt="" className="user-avatar-image" /> : (user?.name || 'U').slice(0, 1).toUpperCase()}</span>
               <span className="profile-name">{user?.name || 'User'}</span>
               <Icon name="chevronDown" size={14} aria-hidden="true" />
             </button>

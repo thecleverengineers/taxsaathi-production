@@ -33,7 +33,7 @@ import {
   statusLabel,
   timeAgo
 } from '../lib/legacy.mjs';
-import { saveUpload, streamStoredFile } from '../lib/file-store.mjs';
+import { saveUpload, streamStoredFile, deleteStoredFile } from '../lib/file-store.mjs';
 import { rateLimit } from '../lib/rate-limit.mjs';
 import { runWorkflowReminders } from '../lib/workflow.mjs';
 import { recordAudit } from '../lib/audit.mjs';
@@ -203,7 +203,9 @@ async function currentUserResponse(store, user) {
     if (role) roles.push(role);
   }
   const role = roles.find((item) => Number(item.id) === Number(user.role_id)) || roles[0] || null;
-  return publicUser(user, role, roles);
+  const client = user.client_id ? await store.findOne('clients', { id: Number(user.client_id) }) : null;
+  return { ...publicUser(user, role, roles), avatar_url: user.avatar_stored_name ? '/api/auth/avatar' : null,
+    client_type: client?.client_type || null, company_name: client?.company_name || null };
 }
 
 function responseError(response, message, status = 400) {
@@ -879,6 +881,11 @@ router.post('/auth/register/otp/request', otpRateLimit, asyncRoute(async (reques
   const email = String(request.body.email || '').trim().toLowerCase();
   const phone = normalizePhone(request.body.phone || request.body.mobile);
   const password = String(request.body.password || '');
+  const clientType = String(request.body.client_type || 'individual').trim().toLowerCase();
+  const companyName = String(request.body.company_name || '').trim().slice(0, 150);
+  if (!['individual', 'corporate'].includes(clientType)) return responseError(response, 'Choose Individual or Corporate account.', 422);
+  if (clientType === 'corporate' && !companyName) return responseError(response, 'Company name is required for Corporate accounts.', 422);
+
   if (!name || !email || !phone || password.length < 6) return responseError(response, 'Name, email, mobile number, and a six-character password are required.');
   if (await findUserByEmail(store, email)) return responseError(response, 'An account with this email already exists.', 409);
   if (await findUserByPhone(store, phone)) return responseError(response, 'An account with this mobile number already exists.', 409);
@@ -903,6 +910,11 @@ router.post('/auth/register', asyncRoute(async (request, response) => {
   const email = String(request.body.email || '').trim().toLowerCase();
   const phone = normalizePhone(request.body.phone || request.body.mobile);
   const password = String(request.body.password || '');
+  const clientType = String(request.body.client_type || 'individual').trim().toLowerCase();
+  const companyName = String(request.body.company_name || '').trim().slice(0, 150);
+  if (!['individual', 'corporate'].includes(clientType)) return responseError(response, 'Choose Individual or Corporate account.', 422);
+  if (clientType === 'corporate' && !companyName) return responseError(response, 'Company name is required for Corporate accounts.', 422);
+
   const requestId = String(request.body.otp_request_id || '');
   const otp = String(request.body.otp || '').trim();
   if (!name || !email || !phone || password.length < 6 || !requestId || !otp) {
@@ -914,7 +926,9 @@ router.post('/auth/register', asyncRoute(async (request, response) => {
   if (await findUserByEmail(store, email)) return responseError(response, 'An account with this email already exists.', 409);
   if (await findUserByPhone(store, phone)) return responseError(response, 'An account with this mobile number already exists.', 409);
 
-  const client = await store.insert('clients', { name, phone, email, client_type: 'individual', status: 'active', created_at: isoNow(), updated_at: isoNow() });
+  const client = await store.insert('clients', { name, phone, email, client_type: clientType,
+    company_name: clientType === 'corporate' ? companyName : '', contact_person: clientType === 'corporate' ? name : '',
+    status: 'active', created_at: isoNow(), updated_at: isoNow() });
   const user = await store.insert('users', {
     role_id: 5,
     client_id: client.id,
@@ -978,7 +992,164 @@ router.post('/auth/forgot-password/reset', asyncRoute(async (request, response) 
 
 router.get('/auth/me', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
+  // Restore the HttpOnly session cookie for valid legacy localStorage-only logins.
+  // Image endpoints, background event streams and push subscriptions cannot attach a Bearer header.
+  const authorization = String(request.headers.authorization || '');
+  if (!request.cookies?.taxsaathi_token && authorization.startsWith('Bearer ')) {
+    setTokenCookie(response, authorization.slice(7));
+  }
   response.json({ ok: true, user: await currentUserResponse(store, request.auth.user) });
+}));
+
+
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (_request, file, callback) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'].includes(String(file.mimetype || '').toLowerCase());
+    callback(allowed ? null : new Error('Profile photo must be a JPG, PNG or WebP image.'), allowed);
+  },
+  limits: { fileSize: 3 * 1024 * 1024, files: 1 }
+});
+
+router.get('/auth/avatar', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
+  const user = request.auth.user;
+  if (!user.avatar_stored_name) return responseError(response, 'Profile photo not found.', 404);
+  response.setHeader('Cache-Control', 'private, no-store');
+  response.setHeader('X-Content-Type-Options', 'nosniff');
+  const sent = await streamStoredFile(request.app.locals.store, user.avatar_stored_name, response, {
+    localFolder: 'documents', downloadName: 'tax-saathi-profile-image'
+  });
+  if (!sent) return responseError(response, 'Profile photo not found.', 404);
+}));
+
+router.post('/auth/avatar', authRequired((request) => request.app.locals.store), avatarUpload.single('file'), asyncRoute(async (request, response) => {
+  if (!request.file) return responseError(response, 'Select a JPG, PNG or WebP profile photo.', 422);
+  const store = request.app.locals.store;
+  const allowed = {
+    'image/jpeg': [0xff, 0xd8, 0xff],
+    'image/png': [0x89, 0x50, 0x4e, 0x47],
+    'image/webp': [0x52, 0x49, 0x46, 0x46]
+  };
+  const magic = allowed[request.file.mimetype];
+  if (!magic || !magic.every((value, index) => request.file.buffer[index] === value)) {
+    return responseError(response, 'The file does not match the selected image type.', 422);
+  }
+  const old = String(request.auth.user.avatar_stored_name || '');
+  const saved = await saveUpload(store, request.file, {
+    folder: 'documents', metadata: { kind: 'profile-avatar', user_id: request.auth.user.id }
+  });
+  const updated = await store.update('users', { id: Number(request.auth.user.id) }, {
+    avatar_stored_name: saved.stored_name, avatar_file_id: saved.file_id,
+    updated_at: isoNow()
+  });
+  if (old && old !== saved.stored_name) await deleteStoredFile(store, old).catch(() => {});
+  await recordAudit(store, request, { action: 'user.avatar.updated', resourceType: 'user', resourceId: request.auth.user.id });
+  response.json({ ok: true, user: await currentUserResponse(store, updated) });
+}));
+
+router.delete('/auth/avatar', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const old = String(request.auth.user.avatar_stored_name || '');
+  await store.update('users', { id: Number(request.auth.user.id) }, {
+    avatar_stored_name: null, avatar_file_id: null, updated_at: isoNow()
+  });
+  if (old) await deleteStoredFile(store, old).catch(() => {});
+  await recordAudit(store, request, { action: 'user.avatar.removed', resourceType: 'user', resourceId: request.auth.user.id });
+  response.json({ ok: true, user: await currentUserResponse(store, await store.findOne('users', { id: Number(request.auth.user.id) })) });
+}));
+
+/* Search only orders already visible to the signed-in user. Never query global records outside their scope. */
+router.get('/workspace/search', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
+  const search = String(request.query.q || '').trim().toLowerCase().slice(0, 90);
+  if (search.length < 2) return response.json({ ok: true, orders: [], truncated: false });
+  const filter = allowedOrderFilter(request.auth);
+  const recent = await request.app.locals.store.find('orders', filter, { sort: { id: -1 }, limit: 250 });
+  const matching = recent.filter(row => [row.order_no, row.customer_name, row.customer_email, row.pan_number, row.status]
+    .filter(Boolean).join(' ').toLowerCase().includes(search));
+  response.json({ ok: true, orders: matching.slice(0, 12).map(row => ({
+    id: row.id, order_no: row.order_no, customer_name: row.customer_name || '', status: row.status,
+    created_at: row.created_at
+  })), truncated: matching.length > 12 || recent.length === 250 });
+}));
+
+router.get('/corporate/overview', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  if (roleSlug(request.auth) !== 'client' || !request.auth.user.client_id) return responseError(response, 'Corporate client access required.', 403);
+  const client = await store.findOne('clients', { id: Number(request.auth.user.client_id) });
+  if (!client || String(client.client_type).toLowerCase() !== 'corporate') return responseError(response, 'This account is not a Corporate client.', 403);
+  const orders = await store.find('orders', { client_id: Number(client.id) }, { sort: { id: -1 }, limit: 250 });
+  const events = await store.find('corporate_compliance_events', { client_id: Number(client.id) }, { sort: { due_date: 1, id: -1 }, limit: 100 });
+  const outstanding = orders.filter(row => !['verified','paid','approved'].includes(String(row.payment_status||'').toLowerCase()));
+  const deadlines = orders.filter(row => row.due_date && !['completed','closed','cancelled'].includes(String(row.status||'').toLowerCase()))
+    .map(row => ({ id: row.id, order_no: row.order_no, due_date: row.due_date, status: row.status }))
+    .sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date))).slice(0, 12);
+  response.json({ ok: true, company: { id: client.id, name: client.name, company_name: client.company_name,
+    contact_person: client.contact_person, email: client.email, phone: client.phone, client_type: 'corporate' },
+    summary: { total_orders: orders.length, open_orders: orders.filter(row => !['completed','closed','cancelled'].includes(String(row.status||'').toLowerCase())).length,
+      outstanding_payments: outstanding.length, completed_orders: orders.filter(row => ['completed','closed'].includes(String(row.status||'').toLowerCase())).length },
+    deadlines, events: events.map(row => ({ id: row.id, title: row.title, due_date: row.due_date,
+      notes: row.notes || '', status: row.status || 'open', source: 'manual' })),
+    orders: orders.slice(0, 25).map(row => ({
+      id: row.id, order_no: row.order_no, status: row.status, payment_status: row.payment_status,
+      fee_amount: row.fee_amount, due_date: row.due_date, created_at: row.created_at
+    })), truncated: orders.length >= 250 });
+}));
+
+async function corporateClientFor(request) {
+  if (roleSlug(request.auth) !== 'client' || !request.auth.user.client_id) return null;
+  const company = await request.app.locals.store.findOne('clients', { id: Number(request.auth.user.client_id) });
+  return String(company?.client_type || '').toLowerCase() === 'corporate' ? company : null;
+}
+
+router.post('/corporate/deadlines', authRequired(request => request.app.locals.store), asyncRoute(async (request, response) => {
+  const company = await corporateClientFor(request);
+  if (!company) return responseError(response, 'Corporate client access required.', 403);
+  const title = String(request.body.title || '').trim().slice(0, 140);
+  const due = String(request.body.due_date || '').trim();
+  const notes = String(request.body.notes || '').trim().slice(0, 1000);
+  if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(due) || Number.isNaN(new Date(due + 'T00:00:00Z').valueOf()) ||
+    new Date(due + 'T00:00:00Z').toISOString().slice(0, 10) !== due) {
+    return responseError(response, 'A title and valid due date are required.', 422);
+  }
+  const row = await request.app.locals.store.insert('corporate_compliance_events', {
+    client_id: Number(company.id), title, due_date: due, notes, status: 'open',
+    created_by: Number(request.auth.user.id), created_at: isoNow(), updated_at: isoNow()
+  });
+  await recordAudit(request.app.locals.store, request, { action: 'corporate.deadline.created', resourceType: 'corporate_compliance_event', resourceId: row.id });
+  response.status(201).json({ ok: true, event: { id: row.id, title, due_date: due, notes, status: 'open' } });
+}));
+
+router.patch('/corporate/deadlines/:id', authRequired(request => request.app.locals.store), asyncRoute(async (request, response) => {
+  const company = await corporateClientFor(request);
+  if (!company) return responseError(response, 'Corporate client access required.', 403);
+  const status = String(request.body.status || '').trim().toLowerCase();
+  if (!['open', 'completed'].includes(status)) return responseError(response, 'Invalid reminder status.', 422);
+  const id = Number(request.params.id);
+  const match = await request.app.locals.store.findOne('corporate_compliance_events', { id, client_id: Number(company.id) });
+  if (!match) return responseError(response, 'Reminder not found.', 404);
+  const updated = await request.app.locals.store.update('corporate_compliance_events', { id, client_id: Number(company.id) }, {
+    status, updated_at: isoNow()
+  });
+  await recordAudit(request.app.locals.store, request, { action: 'corporate.deadline.updated', resourceType: 'corporate_compliance_event', resourceId: id });
+  response.json({ ok: true, event: { id: updated.id, title: updated.title, due_date: updated.due_date, status: updated.status } });
+}));
+
+router.patch('/corporate/company', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  if (roleSlug(request.auth) !== 'client' || !request.auth.user.client_id) return responseError(response, 'Corporate client access required.', 403);
+  const client = await store.findOne('clients', { id: Number(request.auth.user.client_id) });
+  if (!client || String(client.client_type).toLowerCase() !== 'corporate') return responseError(response, 'This account is not a Corporate client.', 403);
+  const companyName = String(request.body.company_name || '').trim().slice(0, 150);
+  const contactPerson = String(request.body.contact_person || '').trim().slice(0, 120);
+  if (!companyName) return responseError(response, 'Company name is required.', 422);
+  const updated = await store.update('clients', { id: Number(client.id) }, {
+    company_name: companyName, contact_person: contactPerson, updated_at: isoNow()
+  });
+  await recordAudit(store, request, { action: 'corporate.profile.updated', resourceType: 'client', resourceId: client.id });
+  response.json({ ok: true, company: {
+    id: updated.id, company_name: updated.company_name, contact_person: updated.contact_person,
+    name: updated.name, email: updated.email, phone: updated.phone
+  }});
 }));
 
 router.post('/auth/logout', asyncRoute(async (request, response) => {
@@ -1582,6 +1753,35 @@ router.get('/partner/orders', ...roleGuard(request => request.app.locals.store, 
   const services = await store.find('services', {});
   const servicesById = new Map(services.map((service) => [Number(service.id), service]));
   response.json({ ok: true, orders: rows.map((row) => ({ ...row, service: servicesById.get(Number(row.service_id)) || null })) });
+}));
+
+
+router.get('/partner/orders/:id/messages', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'partner', 'partners'), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const filter = isGlobalRole(request.auth) ? {} : partnerOwnerFilter(request.auth);
+  const order = await store.findOne('partner_orders', { id: Number(request.params.id), ...filter });
+  if (!order) return responseError(response, 'Partner order not found or access denied.', 404);
+  const messages = await store.find('partner_order_messages', { partner_order_id: Number(order.id) }, { sort: { id: 1 }, limit: 250 });
+  response.json({ ok: true, messages });
+}));
+
+router.post('/partner/orders/:id/messages', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'partner', 'partners'), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const filter = isGlobalRole(request.auth) ? {} : partnerOwnerFilter(request.auth);
+  const order = await store.findOne('partner_orders', { id: Number(request.params.id), ...filter });
+  if (!order) return responseError(response, 'Partner order not found or access denied.', 404);
+  const messageText = String(request.body.message || '').trim();
+  if (!messageText || messageText.length > 3000) return responseError(response, 'Write a message up to 3,000 characters.', 422);
+  const message = await store.insert('partner_order_messages', {
+    partner_order_id: Number(order.id), sender_user_id: Number(request.auth.user.id),
+    sender_name: String(request.auth.user.name || 'Tax Saathi'), sender_role: roleSlug(request.auth),
+    message: messageText, created_at: isoNow()
+  });
+  if (order.assigned_user_id && Number(order.assigned_user_id) !== Number(request.auth.user.id)) {
+    await notify(store, { userId: Number(order.assigned_user_id), title: 'Partner order message',
+      message: messageText.slice(0, 160), severity: 'info', url: '/partner/orders/' + order.id });
+  }
+  response.status(201).json({ ok: true, message });
 }));
 
 router.get('/partner/orders/:id', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'partners', 'partner'), asyncRoute(async (request, response) => {
@@ -2642,7 +2842,22 @@ router.get('/admin/intelligence/overview', ...roleGuard(request => request.app.l
   const [models, users, leads, orders, notifications, audit] = await Promise.all([store.find('intelligence_models', {}, { sort: { id: -1 }}), store.find('users', {}, { limit: 1000 }), store.find('leads', {}, { limit: 1000 }), store.find('orders', {}, { limit: 1000 }), store.find('notifications', {}, { sort: { id: -1 }, limit: 1000 }), store.find('audit_logs', {}, { sort: { id: -1 }, limit: 1000 })]);
   const convertedLeads = leads.filter((row) => ['converted', 'closed'].includes(String(row.status || '').toLowerCase())).length;
   const completedOrders = orders.filter((row) => ['completed', 'closed'].includes(String(row.status || '').toLowerCase())).length;
-  response.json({ ok: true, models, metrics: { data_records: users.length + leads.length + orders.length, lead_conversion_rate: leads.length ? Math.round(convertedLeads / leads.length * 100) : 0, order_completion_rate: orders.length ? Math.round(completedOrders / orders.length * 100) : 0, notification_delivery_records: notifications.filter((row) => row.delivered_at || row.is_read).length, audit_events: audit.length }, safeguards: ['Server-side authorization is required.', 'AI output is advisory and source-linked.', 'Human approval is required for official filings, payments, and legal responses.', 'No quantum or deep-learning result is presented without a configured model/provider.'] });
+  // Live, deterministic operational insights. These are NOT predictions or machine-learning output.
+  const today = isoNow().slice(0, 10);
+  const active = orders.filter(row => !['completed', 'closed', 'cancelled', 'rejected'].includes(String(row.status || '').toLowerCase()));
+  const insights = [
+    { code: 'overdue', label: 'Overdue service cases', count: active.filter(row => row.due_date && String(row.due_date).slice(0, 10) < today).length,
+      severity: 'high', explanation: 'Open orders past their recorded due date.', url: '/admin/orders' },
+    { code: 'unassigned', label: 'Unassigned service cases', count: active.filter(row => !row.assigned_user_id && row.status !== 'awaiting_payment').length,
+      severity: 'high', explanation: 'Open orders without a staff or partner assignment.', url: '/admin/workflow' },
+    { code: 'approval', label: 'Deliverables awaiting approval', count: orders.filter(row => row.status === 'awaiting_approval').length,
+      severity: 'normal', explanation: 'Submitted outputs pending an administrator review.', url: '/admin/orders' },
+    { code: 'payments', label: 'Payment follow-ups', count: orders.filter(row => ['unpaid','deferred','pending_review'].includes(String(row.payment_status || '').toLowerCase())).length,
+      severity: 'normal', explanation: 'Payment remains outstanding or needs proof verification.', url: '/admin/orders' },
+    { code: 'leads', label: 'Uncontacted leads', count: leads.filter(row => String(row.status || '').toLowerCase() === 'new').length,
+      severity: 'normal', explanation: 'Incoming website enquiries still marked New.', url: '/admin/operations/leads' }
+  ];
+  response.json({ ok: true, models, insights, metrics: { data_records: users.length + leads.length + orders.length, lead_conversion_rate: leads.length ? Math.round(convertedLeads / leads.length * 100) : 0, order_completion_rate: orders.length ? Math.round(completedOrders / orders.length * 100) : 0, notification_delivery_records: notifications.filter((row) => row.delivered_at || row.is_read).length, audit_events: audit.length }, safeguards: ['Server-side authorization is required.', 'AI output is advisory and source-linked.', 'Human approval is required for official filings, payments, and legal responses.', 'No quantum or deep-learning result is presented without a configured model/provider.'] });
 }));
 
 router.post('/admin/intelligence/models', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {

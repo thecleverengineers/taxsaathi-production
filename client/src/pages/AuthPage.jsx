@@ -58,7 +58,7 @@ export default function AuthPage() {
   const isForgot = location.pathname === '/forgot-password';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', client_type: 'individual', company_name: '' });
   const [confirmPassword, setConfirmPassword] = useState('');
   const [registerStep, setRegisterStep] = useState('details');
   const [registerRequestId, setRegisterRequestId] = useState('');
@@ -133,7 +133,7 @@ export default function AuthPage() {
     feedback('');
     try {
       const result = await register({ ...form, otp_request_id: registerRequestId, otp: registerOtp });
-      if (result.user) navigate(destination, { replace: true });
+      if (result.user) navigate(destination === '/dashboard' && form.client_type === 'corporate' ? '/client/company' : destination, { replace: true });
     } catch (error) {
       feedback(error.message || 'Could not verify your account.');
     } finally {
@@ -207,7 +207,7 @@ export default function AuthPage() {
     if (registerStep === 'otp') {
       return (
         <>
-          <p className="ts-auth-step-note">We sent a verification code to <strong>{form.phone}</strong>. Confirm the code to create your account.</p>
+          <p className="ts-auth-step-note">We sent a verification code to <strong>{form.phone}</strong>. Confirm the code to create your {form.client_type === 'corporate' ? 'Corporate' : 'Individual'} account.</p>
           <form onSubmit={createAccount} className="ts-auth-form">
             <AuthInput label="Mobile OTP" icon="lock" inputMode="numeric"
               autoComplete="one-time-code" maxLength={6} required placeholder="6-digit OTP"
@@ -223,6 +223,21 @@ export default function AuthPage() {
     return (
       <>
         <form onSubmit={sendRegisterOtp} className="ts-auth-form">
+          <div className="ts-auth-account-type" role="group" aria-label="Account type">
+            <label className={form.client_type === 'individual' ? 'selected' : ''}>
+              <input type="radio" name="client_type" value="individual" checked={form.client_type === 'individual'}
+                onChange={() => setForm({...form, client_type:'individual',company_name:''})}/>
+              <span>Individual</span>
+            </label>
+            <label className={form.client_type === 'corporate' ? 'selected' : ''}>
+              <input type="radio" name="client_type" value="corporate" checked={form.client_type === 'corporate'}
+                onChange={() => setForm({...form, client_type:'corporate'})}/>
+              <span>Corporate</span>
+            </label>
+          </div>
+          {form.client_type === 'corporate' && <AuthInput label="Registered company name" icon="briefcase" required
+            placeholder="Company or organisation name" value={form.company_name}
+            onChange={(event) => setForm({ ...form, company_name: event.target.value })}/>}
           <AuthInput label="Full Name" icon="user" required autoComplete="name" placeholder="Full Name"
             value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
           <AuthInput label="Email address" icon="mail" type="email" required autoComplete="email"

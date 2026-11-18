@@ -43,7 +43,8 @@ export default function OrderDetailPage({ partner = false, job = false }) {
   const role = String(user?.role?.slug || '').toLowerCase();
   const isStaff = userRoles.some((item) => ['admin', 'manager', 'executive'].includes(item));
   const canReview = ['admin', 'manager'].includes(role);
-  const orderPath = job ? `/orders/${id}` : partner ? `/partner/orders/${id}` : `/orders/${id}`;
+  const orderPath = partner ? `/partner/orders/${id}` : `/orders/${id}`;
+  const messagesPath = partner ? `/partner/orders/${id}/messages` : `/orders/${id}/messages`;
   const listPath = job ? '/partner/jobs' : partner ? '/partner/orders' : isStaff ? '/admin/orders' : '/client/orders';
 
   useEffect(() => {
@@ -51,9 +52,15 @@ export default function OrderDetailPage({ partner = false, job = false }) {
   }, [orderPath]);
 
   useEffect(() => {
-    if (partner) return;
-    api(`/orders/${id}/messages`).then((payload) => setMessages(payload.messages || [])).catch(() => setMessages([]));
-  }, [id, partner]);
+    let active = true;
+    const load = () => {
+      if (document.visibilityState === 'hidden') return;
+      api(messagesPath).then(payload => { if (active) setMessages(payload.messages || []); }).catch(() => {});
+    };
+    load();
+    const timer = setInterval(load, 12000);
+    return () => { active = false; clearInterval(timer); };
+  }, [messagesPath]);
 
   useEffect(() => {
     if (canReview) api('/admin/assignees').then((payload) => setAssignees(payload.assignees || [])).catch(() => setAssignees([]));
@@ -149,7 +156,7 @@ export default function OrderDetailPage({ partner = false, job = false }) {
     event.preventDefault();
     if (!messageText.trim()) return;
     setMessageSaving(true);
-    try { const result = await api(`/orders/${id}/messages`, { method: 'POST', body: { message: messageText.trim() } }); setMessages((current) => [...current, result.message]); setMessageText(''); } catch (error) { setNotice(error.message); } finally { setMessageSaving(false); }
+    try { const result = await api(messagesPath, { method: 'POST', body: { message: messageText.trim() } }); setMessages((current) => [...current, result.message]); setMessageText(''); } catch (error) { setNotice(error.message); } finally { setMessageSaving(false); }
   }
 
   async function choosePayLater() {
@@ -258,7 +265,7 @@ export default function OrderDetailPage({ partner = false, job = false }) {
       {canReview && order.payment_reference && <section className="panel payment-review-panel"><div className="panel-heading"><div><span className="eyebrow">Admin review</span><h3>Payment verification</h3></div><StatusBadge value={order.payment_status} /></div><div className="payment-submission-summary"><div><small>Transaction ID</small><strong>{order.payment_reference}</strong></div>{order.payment_proof && <a className="button light small" href={paymentProofUrl} target="_blank" rel="noreferrer"><Icon name="file" size={14} /> View screenshot</a>}</div>{!completedPayment(order.payment_status) && <div className="inline-actions payment-review-actions"><select className="input compact-input" value={reviewStatus} onChange={(event) => setReviewStatus(event.target.value)}><option value="verified">Verify payment</option><option value="rejected">Reject proof</option></select><button className="button dark small" onClick={reviewPayment} disabled={reviewing}>{reviewing ? 'Saving…' : 'Save review'}</button></div>}</section>}
     </div><aside className="detail-side">
       <section className="side-summary order-summary-card"><span className="eyebrow">Order summary</span><div className="summary-line"><span>Service fee</span><strong>{money(fee)}</strong></div><div className="summary-line"><span>Discount</span><strong>{discount ? `−${money(discount)}` : money(0)}</strong></div>{order.coupon_code && <div className="applied-coupon"><Icon name="tag" size={13} /><span>{order.coupon_code} applied</span></div>}<div className="summary-line total"><span>Payable</span><strong>{money(payable)}</strong></div>{canPay && ['awaiting_payment', 'awaiting_approval'].includes(order.status) && !completedPayment(paymentStatus) && <Link className="button primary full" to={job ? `/partner/jobs/${id}/pay` : partner ? `/partner/orders/${id}/pay` : `/client/orders/${id}/pay`}><Icon name="wallet" size={16} /> Pay now</Link>}{canPay && order.status === 'awaiting_approval' && !order.payment_first && !['verified', 'paid', 'deferred', 'pending_review'].includes(paymentStatus) && <button className="button light full" type="button" onClick={choosePayLater}>Choose payment later</button>}{order.invoice && <button className="button dark full" onClick={printInvoice}><Icon name="invoice" size={16} /> Open invoice PDF</button>} {!order.coupon_code && !completedPayment(paymentStatus) && <form className="coupon-form" onSubmit={applyCoupon}><label>Have a coupon?</label><div><input value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} placeholder="Enter coupon code" /><button className="button light small" type="submit" disabled={couponLoading}>{couponLoading ? '…' : 'Apply'}</button></div><small>Each coupon can be used once per account.</small></form>}</section>
-      {!partner && <section className="panel"><div className="panel-heading"><div><span className="eyebrow">Task conversation</span><h3>Messages</h3></div></div><div className="task-message-list">{messages.length ? messages.map((item) => <div className="task-message" key={item.id}><strong>{item.sender_name || 'TaxSaathi user'} <small>{item.sender_role || ''} · {dateLabel(item.created_at)}</small></strong><p>{item.message}</p></div>) : <EmptyState icon="support" title="No messages yet." text="Use this thread for questions about this job." />}</div><form className="task-message-form" onSubmit={sendMessage}><textarea className="input" value={messageText} onChange={(event) => setMessageText(event.target.value)} placeholder="Ask a question or share a job update" maxLength={3000} /><button className="button dark small" type="submit" disabled={messageSaving || !messageText.trim()}>{messageSaving ? 'Sending…' : 'Send message'}</button></form></section>}
+      {<section className="panel"><div className="panel-heading"><div><span className="eyebrow">Task conversation</span><h3>Messages</h3></div></div><div className="task-message-list">{messages.length ? messages.map((item) => <div className="task-message" key={item.id}><strong>{item.sender_name || 'TaxSaathi user'} <small>{item.sender_role || ''} · {dateLabel(item.created_at)}</small></strong><p>{item.message}</p></div>) : <EmptyState icon="support" title="No messages yet." text="Use this thread for questions about this job." />}</div><form className="task-message-form" onSubmit={sendMessage}><textarea className="input" value={messageText} onChange={(event) => setMessageText(event.target.value)} placeholder="Ask a question or share a job update" maxLength={3000} /><button className="button dark small" type="submit" disabled={messageSaving || !messageText.trim()}>{messageSaving ? 'Sending…' : 'Send message'}</button></form></section>}
       {(order.customer_name || order.client) && <section className="side-summary"><span className="eyebrow">Client profile</span><h3>{order.client?.name || order.customer_name}</h3><p>{order.client?.email || order.customer_email}</p><p>{order.client?.phone || order.customer_mobile}</p></section>}{order.assignee && <section className="side-summary"><span className="eyebrow">Assigned to</span><h3>{order.assignee.name}</h3><p>{order.assignee.email}</p></section>}
     </aside></div>
   </div>;

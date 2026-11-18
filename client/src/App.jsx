@@ -10,6 +10,7 @@ import ServiceApplicationPage from './pages/ServiceApplicationPage';
 import AuthPage from './pages/AuthPage';
 import DashboardHomePage from './pages/DashboardHomePage';
 import PartnerDashboardPage from './pages/PartnerDashboardPage';
+import CorporateWorkspacePage from './pages/CorporateWorkspacePage';
 import PartnerJobsPage from './pages/PartnerJobsPage';
 import WorkflowBoardPage, { StaffWorkloadPage } from './pages/WorkflowBoardPage';
 import ClientDirectoryPage from './pages/ClientDirectoryPage';
@@ -51,6 +52,7 @@ export default function App() {
     <Route element={<Protected><DashboardLayout /></Protected>}>
       <Route path="/dashboard" element={<DashboardHomePage />} />
       <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/client/company" element={<Protected roles={['client']}><CorporateWorkspacePage /></Protected>} />
       <Route path="/client/orders" element={<Protected roles={['client']}><OrdersPage /></Protected>} />
       <Route path="/client/orders/:id" element={<Protected roles={['client']}><OrderDetailPage /></Protected>} />
       <Route path="/client/orders/:id/pay" element={<Protected roles={['client']}><PaymentPage /></Protected>} />
