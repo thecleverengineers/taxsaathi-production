@@ -3,7 +3,8 @@ import { AuthProvider } from './components/AuthContext';
 import RequireAuth from './components/RequireAuth';
 import PublicLayout from './components/PublicLayout';
 import DashboardLayout from './components/DashboardLayout';
-import HomePage from './pages/HomePage';
+import HomePage from './pages/DynamicHomePage';
+import HomeBuilderPage from './pages/HomeBuilderPage';
 import ServicesPage from './pages/ServicesPage';
 import ServiceDetailPage from './pages/ServiceDetailPage';
 import ServiceApplicationPage from './pages/ServiceApplicationPage';
@@ -85,6 +86,7 @@ export default function App() {
       <Route path="/admin/reports" element={<Protected roles={['admin', 'manager', 'executive']}><AdminReportsPage /></Protected>} />
       <Route path="/admin/notifications" element={<Protected roles={['admin', 'manager', 'executive']}><AdminNotificationsPage /></Protected>} />
       <Route path="/admin/audit" element={<Protected roles={['admin', 'manager']}><AdminAuditPage /></Protected>} />
+      <Route path="/admin/home-builder" element={<Protected roles={['admin']}><HomeBuilderPage /></Protected>} />
       <Route path="/admin/content" element={<Protected roles={['admin']}><AdminContentPage /></Protected>} />
       <Route path="/admin/management" element={<Protected roles={['admin']}><AdminManagementPage /></Protected>} />
       <Route path="/admin/marketing" element={<Protected roles={['admin', 'manager']}><AdminMarketingPage /></Protected>} />
