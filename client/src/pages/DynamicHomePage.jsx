@@ -134,9 +134,9 @@ export default function DynamicHomePage() {
             <span className="ts-image-hero-counter">{String(chosenHeroIndex + 1).padStart(2, '0')} / {String(heroSlides.length).padStart(2, '0')}</span>
           </div>
           <div className="ts-image-hero-assurances">
-            <span><Icon name="shield" size={16} /> Secure records</span>
-            <span><Icon name="check" size={16} /> Guided process</span>
-            <span><Icon name="headphones" size={16} /> Human support</span>
+            <span><Icon name="shield" size={16} /> {hero.assuranceOne}</span>
+            <span><Icon name="check" size={16} /> {hero.assuranceTwo}</span>
+            <span><Icon name="headphones" size={16} /> {hero.assuranceThree}</span>
           </div>
         </div>
       </div>
@@ -239,13 +239,13 @@ export default function DynamicHomePage() {
           <div className="ts-home-workflow-circle" />
           <div className="ts-home-workflow-card">
             <div className="ts-home-workflow-card-top"><img src="/taxsaathi-logo.png" alt="" /><span>EXAMPLE WORKFLOW</span><Icon name="more" size={19} /></div>
-            <h3>Service application</h3><p>All stages, one clear view</p>
+            <h3>{config('workflow').illustrationTitle}</h3><p>{config('workflow').illustrationDescription}</p>
             <div className="ts-home-workflow-progress"><span /></div>
-            <div className="ts-home-workflow-stages"><span><i /> Submitted</span><span><i /> In review</span><span><i /> Deliverable</span></div>
-            <div className="ts-home-workflow-card-foot"><Icon name="shield" size={17} /> Secure document handling</div>
+            <div className="ts-home-workflow-stages"><span><i /> {config('workflow').illustrationStageOne}</span><span><i /> {config('workflow').illustrationStageTwo}</span><span><i /> {config('workflow').illustrationStageThree}</span></div>
+            <div className="ts-home-workflow-card-foot"><Icon name="shield" size={17} /> {config('workflow').illustrationFooter}</div>
           </div>
-          <div className="ts-home-workflow-float ts-home-workflow-float-a"><Icon name="check" size={18} /> Track each update</div>
-          <div className="ts-home-workflow-float ts-home-workflow-float-b"><Icon name="file" size={18} /> Files in one place</div>
+          <div className="ts-home-workflow-float ts-home-workflow-float-a"><Icon name="check" size={18} /> {config('workflow').illustrationFloatOne}</div>
+          <div className="ts-home-workflow-float ts-home-workflow-float-b"><Icon name="file" size={18} /> {config('workflow').illustrationFloatTwo}</div>
         </div>
       </div>
     </section>,
