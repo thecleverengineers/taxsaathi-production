@@ -40,6 +40,7 @@ import { recordAudit } from '../lib/audit.mjs';
 import { permissionCatalogRows } from '../lib/rbac.mjs';
 import { dispatchWebPushNotifications, getVapidPublicKey, isTrustedPushEndpoint, isWebPushConfigured, normalizeWebPushSubscription } from '../lib/web-push.mjs';
 import workflowRouter from './workflow.mjs';
+import { HOME_DRAFT_KEY, HOME_PUBLISHED_KEY, parseHomeBuilder, validateHomeBuilder, upsertHomeSetting } from '../lib/home-builder.mjs';
 import { resolveOrderPaymentChoice } from '../lib/order-payment.mjs';
 
 const router = express.Router();
@@ -65,6 +66,15 @@ const paymentQrUpload = multer({
   storage: multer.memoryStorage(),
   fileFilter: (_request, file, callback) => callback(null, String(file.mimetype || '').startsWith('image/')),
   limits: { fileSize: 5 * 1024 * 1024, files: 1 }
+});
+const homeMediaUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (_request, file, callback) => {
+    const mime = String(file.mimetype || '').toLowerCase();
+    const allowed = /^(image\/(jpeg|png|webp|avif|gif)|video\/(mp4|webm))$/.test(mime);
+    callback(allowed ? null : new Error('Upload a JPG, PNG, WebP, AVIF, GIF, MP4 or WebM file.'), allowed);
+  },
+  limits: { fileSize: 45 * 1024 * 1024, files: 1 }
 });
 const paymentProofUpload = multer({
   storage: multer.memoryStorage(),
@@ -676,6 +686,17 @@ router.get('/files/public/:id', asyncRoute(async (request, response) => {
   if (!sent) return responseError(response, 'Public file not found.', 404);
 }));
 
+router.get('/public/home/media/:id', asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const media = await store.findOne('homepage_media', { media_key: String(request.params.id) });
+  if (!media) return responseError(response, 'Media not found.', 404);
+  response.setHeader('Cache-Control', 'public, max-age=3600');
+  const sent = await streamStoredFile(store, media.stored_name, response, {
+    localFolder: 'homepage', downloadName: media.original_name, contentType: media.mime_type
+  });
+  if (!sent && !response.headersSent) return responseError(response, 'Media not found.', 404);
+}));
+
 router.get('/public/home', asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
   const [settings, categories, rows, testimonials, faqs] = await Promise.all([
@@ -689,6 +710,7 @@ router.get('/public/home', asyncRoute(async (request, response) => {
   response.json({
     ok: true,
     settings: publicSettings(settings),
+    homeContent: parseHomeBuilder(settings[HOME_PUBLISHED_KEY]),
     categories: categories.map((category) => ({ ...category, image_url: assetUrl(category.image) })),
     featured: services.filter((service) => service.is_featured).slice(0, 8),
     services: services.slice(0, 12),
@@ -2045,6 +2067,45 @@ router.patch('/admin/services/:id', ...roleGuard(request => request.app.locals.s
 router.get('/admin/categories', ...roleGuard(request => request.app.locals.store, 'admin', 'manager'), asyncRoute(async (request, response) => {
   const categories = await request.app.locals.store.find('service_categories', {}, { sort: { sort_order: 1, id: 1 } });
   response.json({ ok: true, categories });
+}));
+
+router.get('/admin/home-builder', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  const settings = await settingsMap(request.app.locals.store);
+  response.setHeader('Cache-Control', 'no-store');
+  response.json({ ok: true, draft: parseHomeBuilder(settings[HOME_DRAFT_KEY]), published: parseHomeBuilder(settings[HOME_PUBLISHED_KEY]) });
+}));
+
+router.put('/admin/home-builder/draft', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  let content;
+  try { content = validateHomeBuilder(request.body.content); }
+  catch (error) { return responseError(response, error.message); }
+  await upsertHomeSetting(request.app.locals.store, HOME_DRAFT_KEY, content);
+  await recordAudit(request.app.locals.store, { action: 'homepage.draft_saved', actor: request.auth, resource_type: 'website_settings', reason: 'Homepage draft updated' }).catch(() => {});
+  response.json({ ok: true, draft: content });
+}));
+
+router.post('/admin/home-builder/publish', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  let content;
+  try { content = validateHomeBuilder(request.body.content); }
+  catch (error) { return responseError(response, error.message); }
+  const store = request.app.locals.store;
+  await upsertHomeSetting(store, HOME_DRAFT_KEY, content);
+  await upsertHomeSetting(store, HOME_PUBLISHED_KEY, content);
+  await recordAudit(store, { action: 'homepage.published', actor: request.auth, resource_type: 'website_settings', reason: 'Homepage published' }).catch(() => {});
+  response.json({ ok: true, content });
+}));
+
+router.post('/admin/home-builder/media', ...roleGuard(request => request.app.locals.store, 'admin'), homeMediaUpload.single('file'), asyncRoute(async (request, response) => {
+  if (!request.file) return responseError(response, 'Choose an image or video to upload.');
+  const store = request.app.locals.store;
+  const uploaded = await saveUpload(store, request.file, { folder: 'homepage', metadata: { purpose: 'homepage' } });
+  const media_key = crypto.randomUUID();
+  await store.insert('homepage_media', {
+    media_key, stored_name: uploaded.stored_name, original_name: uploaded.original_name,
+    mime_type: uploaded.mime_type, size_bytes: uploaded.size_bytes, uploaded_by: Number(request.auth?.user?.id || 0),
+    created_at: isoNow()
+  });
+  response.status(201).json({ ok: true, url: '/api/public/home/media/' + media_key, mime_type: uploaded.mime_type });
 }));
 
 router.get('/admin/settings', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
