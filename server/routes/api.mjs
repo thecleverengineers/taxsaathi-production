@@ -41,6 +41,7 @@ import { permissionCatalogRows } from '../lib/rbac.mjs';
 import { dispatchWebPushNotifications, getVapidPublicKey, isTrustedPushEndpoint, isWebPushConfigured, normalizeWebPushSubscription } from '../lib/web-push.mjs';
 import workflowRouter from './workflow.mjs';
 import { HOME_DRAFT_KEY, HOME_PUBLISHED_KEY, parseHomeBuilder, validateHomeBuilder, upsertHomeSetting } from '../lib/home-builder.mjs';
+import { SERVICES_PAGE_DRAFT_KEY, SERVICES_PAGE_PUBLISHED_KEY, parseServicesPage, validateServicesPage, saveServicesPage } from '../lib/services-builder.mjs';
 import { resolveOrderPaymentChoice } from '../lib/order-payment.mjs';
 
 const router = express.Router();
@@ -724,6 +725,12 @@ router.get('/public/home', asyncRoute(async (request, response) => {
       faqs: faqs.length
     }
   });
+}));
+
+router.get('/public/services-page', asyncRoute(async (request, response) => {
+  const settings = await settingsMap(request.app.locals.store);
+  response.setHeader('Cache-Control', 'no-store');
+  response.json({ ok: true, content: parseServicesPage(settings[SERVICES_PAGE_PUBLISHED_KEY]) });
 }));
 
 router.get('/public/categories', asyncRoute(async (request, response) => {
@@ -2068,6 +2075,32 @@ router.patch('/admin/services/:id', ...roleGuard(request => request.app.locals.s
 router.get('/admin/categories', ...roleGuard(request => request.app.locals.store, 'admin', 'manager'), asyncRoute(async (request, response) => {
   const categories = await request.app.locals.store.find('service_categories', {}, { sort: { sort_order: 1, id: 1 } });
   response.json({ ok: true, categories });
+}));
+
+router.get('/admin/services-page-builder', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  const settings = await settingsMap(request.app.locals.store);
+  response.setHeader('Cache-Control', 'no-store');
+  response.json({ ok: true, draft: parseServicesPage(settings[SERVICES_PAGE_DRAFT_KEY]), published: parseServicesPage(settings[SERVICES_PAGE_PUBLISHED_KEY]) });
+}));
+
+router.put('/admin/services-page-builder/draft', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  let content;
+  try { content = validateServicesPage(request.body.content); }
+  catch (error) { return responseError(response, error.message); }
+  await saveServicesPage(request.app.locals.store, SERVICES_PAGE_DRAFT_KEY, content);
+  await recordAudit(request.app.locals.store, request, { action: 'services_page.draft_saved', resource_type: 'website_settings', reason: 'Services page draft updated' }).catch(() => {});
+  response.json({ ok: true, draft: content });
+}));
+
+router.post('/admin/services-page-builder/publish', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
+  let content;
+  try { content = validateServicesPage(request.body.content); }
+  catch (error) { return responseError(response, error.message); }
+  const store = request.app.locals.store;
+  await saveServicesPage(store, SERVICES_PAGE_DRAFT_KEY, content);
+  await saveServicesPage(store, SERVICES_PAGE_PUBLISHED_KEY, content);
+  await recordAudit(store, request, { action: 'services_page.published', resource_type: 'website_settings', reason: 'Services page published' }).catch(() => {});
+  response.json({ ok: true, content });
 }));
 
 router.get('/admin/home-builder', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
