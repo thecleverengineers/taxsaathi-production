@@ -230,11 +230,12 @@
   gap: 18px;
 }
 .ts-services-results .service-card {
+  --service-card-padding: clamp(16px, 2vw, 26px);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   min-width: 0;
-  padding: clamp(16px, 2vw, 26px);
+  padding: var(--service-card-padding);
   border: 1px solid var(--services-line);
   border-radius: 14px;
   background: #fff;
@@ -245,16 +246,21 @@
   border-color: #b18543;
 }
 .ts-services-results .service-card-icon {
-  width: 88px;
-  height: 88px;
-  padding: 8px;
-  border: 1px solid #ede2d0;
-  border-radius: 12px;
+  position: relative;
+  width: auto;
+  height: auto;
+  aspect-ratio: 16 / 8;
+  margin: calc(-1 * var(--service-card-padding)) calc(-1 * var(--service-card-padding)) 0;
+  border-radius: 13px 13px 0 0;
   background: #fbf6ed;
   color: #80591e;
 }
 .ts-services-results .service-card-icon img {
-  object-fit: contain;
+  position: absolute;
+  inset: 0;
+  display: block;
+  object-fit: cover;
+  object-position: center;
 }
 .ts-services-results .service-card-meta {
   margin-top: 16px;
