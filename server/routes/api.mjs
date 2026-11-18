@@ -295,7 +295,7 @@ function publicSettings(settings) {
 function paymentDetails(settings) {
   return {
     qr_code: assetUrl(settings.payment_qr_code || ''),
-    upi_id: String(settings.payment_upi_id || settings.site_upi || 'taxsaathi@upi').trim(),
+    upi_id: String(settings.payment_upi_id || settings.site_upi || '').trim(),
     account_name: String(settings.payment_account_name || '').trim(),
     bank_name: String(settings.payment_bank_name || '').trim(),
     account_number: String(settings.payment_account_number || '').trim(),
@@ -1043,6 +1043,12 @@ router.post('/orders', ...roleGuard(request => request.app.locals.store, 'admin'
     return responseError(response, error.message, 422);
   }
   const paymentFirst = paymentChoice.payment_first;
+  if (paymentFirst) {
+    const configured = paymentDetails(await settingsMap(store));
+    if (!configured.upi_id && !configured.qr_code && !configured.razorpay_enabled) {
+      return responseError(response, 'UPI payments are not configured yet. Choose Pay Later, or contact support.', 422);
+    }
+  }
   const idempotencyKey = String(request.body.idempotency_key || '').trim().slice(0, 100);
   if (idempotencyKey) {
     const existingOrder = await store.findOne('orders', { submitted_by_user_id: Number(request.auth.user.id), idempotency_key: idempotencyKey });
