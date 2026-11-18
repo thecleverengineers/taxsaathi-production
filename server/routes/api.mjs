@@ -707,6 +707,7 @@ router.get('/public/home', asyncRoute(async (request, response) => {
     store.find('faqs', { is_active: 1 }, { sort: { sort_order: 1, id: 1 } })
   ]);
   const services = await enrichServices(store, rows);
+  response.setHeader('Cache-Control', 'no-store');
   response.json({
     ok: true,
     settings: publicSettings(settings),
@@ -2080,7 +2081,7 @@ router.put('/admin/home-builder/draft', ...roleGuard(request => request.app.loca
   try { content = validateHomeBuilder(request.body.content); }
   catch (error) { return responseError(response, error.message); }
   await upsertHomeSetting(request.app.locals.store, HOME_DRAFT_KEY, content);
-  await recordAudit(request.app.locals.store, { action: 'homepage.draft_saved', actor: request.auth, resource_type: 'website_settings', reason: 'Homepage draft updated' }).catch(() => {});
+  await recordAudit(request.app.locals.store, request, { action: 'homepage.draft_saved', resource_type: 'website_settings', reason: 'Homepage draft updated' }).catch(() => {});
   response.json({ ok: true, draft: content });
 }));
 
@@ -2091,7 +2092,7 @@ router.post('/admin/home-builder/publish', ...roleGuard(request => request.app.l
   const store = request.app.locals.store;
   await upsertHomeSetting(store, HOME_DRAFT_KEY, content);
   await upsertHomeSetting(store, HOME_PUBLISHED_KEY, content);
-  await recordAudit(store, { action: 'homepage.published', actor: request.auth, resource_type: 'website_settings', reason: 'Homepage published' }).catch(() => {});
+  await recordAudit(store, request, { action: 'homepage.published', resource_type: 'website_settings', reason: 'Homepage published' }).catch(() => {});
   response.json({ ok: true, content });
 }));
 
