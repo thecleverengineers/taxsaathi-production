@@ -45,6 +45,11 @@ export default function ServiceApplicationPage() {
     email: draft.email || user?.email || ''
   });
   const [additionalNotes, setAdditionalNotes] = useState(draft.additional_notes || '');
+  const [paymentChoice, setPaymentChoice] = useState(['upi', 'pay_later'].includes(draft.payment_choice) ? draft.payment_choice : '');
+  const [detailsUnlocked, setDetailsUnlocked] = useState(['upi', 'pay_later'].includes(draft.payment_choice));
+  const createdOrderRef = useRef(draft.created_order_id || null);
+  const createdOrderPayloadRef = useRef(null);
+  const uploadedFileIdsRef = useRef(new Set());
   const [selectedRequirement, setSelectedRequirement] = useState('');
   const [partnerClients, setPartnerClients] = useState([]);
   const [chosenClientId, setChosenClientId] = useState(draft.client_id || '');
@@ -52,11 +57,26 @@ export default function ServiceApplicationPage() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('danger');
   const [submitting, setSubmitting] = useState(false);
+  const [upiAvailable, setUpiAvailable] = useState(null);
+  const [checkoutReady, setCheckoutReady] = useState(null);
 
   useEffect(() => {
     setData(null);
     api(`/public/services/${slug}`).then(setData).catch(() => setData({ service: null }));
   }, [slug]);
+
+  useEffect(() => {
+    let active = true;
+    api('/payment-details')
+      .then(({ payment }) => {
+        if (!active) return;
+        const upiId = String(payment?.upi_id || '').trim();
+        setUpiAvailable(Boolean((upiId && upiId !== 'taxsaathi@upi') || payment?.qr_code || payment?.razorpay_enabled));
+        setCheckoutReady(payment?.checkout_payment_choice_enabled === true);
+      })
+      .catch(() => { if (active) { setUpiAvailable(false); setCheckoutReady(false); } });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -91,7 +111,11 @@ export default function ServiceApplicationPage() {
   }
 
   function saveDraft() {
-    sessionStorage.setItem(draftKey, JSON.stringify({ ...form, additional_notes: additionalNotes, client_id: chosenClientId, idempotency_key: submissionKey }));
+    try {
+      sessionStorage.setItem(draftKey, JSON.stringify({ ...form, additional_notes: additionalNotes, client_id: chosenClientId, payment_choice: paymentChoice, created_order_id: createdOrderRef.current, idempotency_key: submissionKey }));
+    } catch {
+      // Session storage can be unavailable in private browsing. Keep the in-memory form usable.
+    }
   }
 
   function goToAuth(path = '/auth') {
@@ -117,7 +141,7 @@ export default function ServiceApplicationPage() {
       const existing = isActive(requirement.allow_multiple)
         ? current
         : current.filter((item) => Number(item.requirement.id) !== Number(requirement.id));
-      return [...existing, ...filesToAdd.map((file) => ({ requirement, file }))];
+      return [...existing, ...filesToAdd.map((file) => ({ id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`, requirement, file }))];
     });
     setSelectedRequirement('');
     feedback(`${filesToAdd.length} document${filesToAdd.length > 1 ? 's' : ''} added to this order.`, 'success');
@@ -139,67 +163,125 @@ export default function ServiceApplicationPage() {
     setDocuments((current) => current.filter((_item, itemIndex) => itemIndex !== index));
   }
 
+  function choosePayment(value) {
+    if (submitting || createdOrderRef.current) return;
+    setPaymentChoice(value);
+    setDetailsUnlocked(false);
+    setMessage('');
+  }
+
+  function continueToJobDetails() {
+    if (!paymentChoice) {
+      feedback('Choose Pay with UPI or Pay Later before continuing.');
+      return;
+    }
+    if (!checkoutReady) {
+      feedback('Checkout is being updated. Please retry after the backend deployment is complete.');
+      return;
+    }
+    if (paymentChoice === 'upi' && !upiAvailable) {
+      feedback('UPI payment is not configured. Choose Pay Later for now, or contact support.');
+      return;
+    }
+    setDetailsUnlocked(true);
+    feedback('');
+    saveDraft();
+  }
+
   async function submitOrder(event) {
     event.preventDefault();
+    if (submitting) return;
     setMessage('');
+    if (!paymentChoice || !detailsUnlocked) {
+      feedback('Choose a payment method first, then continue to the job details.');
+      return;
+    }
+    if (!checkoutReady && !createdOrderRef.current) {
+      feedback('Checkout is temporarily unavailable while the backend update is pending. Please retry shortly.');
+      return;
+    }
+    if (paymentChoice === 'upi' && !upiAvailable && !createdOrderRef.current) {
+      feedback('UPI payment is temporarily unavailable. Choose Pay Later or contact support.');
+      return;
+    }
     if (!user) {
       goToAuth();
       return;
     }
     const role = String(user.role?.slug || '').toLowerCase();
+    const isPartner = ['partner', 'partners'].includes(role);
     if (!['client', 'admin', 'manager', 'partner', 'partners'].includes(role)) {
       feedback('Sign in with a client or partner account to submit a service job.');
       return;
     }
     const missing = requiredRequirements.filter((requirement) => !attachedFor(requirement.id).length);
-    if (missing.length) {
+    if (missing.length && !createdOrderRef.current) {
       feedback(`Please add: ${missing.map((item) => item.label).join(', ')}`);
       return;
     }
     saveDraft();
     setSubmitting(true);
     try {
-      const contactNotes = [
-        'Customer contact details:',
-        `Name as per PAN: ${form.customer_name.trim()}`,
-        `PAN Number: ${form.pan_number.trim().toUpperCase()}`,
-        `Mobile Number: ${form.mobile.trim()}`,
-        `Email Address: ${form.email.trim()}`
-      ].join('\n');
-      const result = await api('/orders', {
-        method: 'POST',
-        body: {
-          service_id: service.id,
-          client_id: chosenClientId ? Number(chosenClientId) : null,
-          idempotency_key: submissionKey,
-          financial_year: '2026-27',
-          notes: [contactNotes, additionalNotes.trim()].filter(Boolean).join('\n\n'),
-          customer_name: form.customer_name.trim(),
-          pan_number: form.pan_number.trim().toUpperCase(),
-          customer_mobile: form.mobile.trim(),
-          customer_email: form.email.trim()
-        }
-      });
-      const orderId = result.order?.id;
-      if (!orderId) throw new Error('The order was not created. Please try again.');
+      let order = createdOrderPayloadRef.current;
+      if (!order && createdOrderRef.current) {
+        const existing = await api(`/orders/${createdOrderRef.current}`, { timeoutMs: 45000 });
+        order = existing.order;
+      }
+      if (!order) {
+        const contactNotes = [
+          'Customer contact details:',
+          `Name as per PAN: ${form.customer_name.trim()}`,
+          `PAN Number: ${form.pan_number.trim().toUpperCase()}`,
+          `Mobile Number: ${form.mobile.trim()}`,
+          `Email Address: ${form.email.trim()}`
+        ].join('\n');
+        const result = await api('/orders', {
+          method: 'POST',
+          timeoutMs: 60000,
+          body: {
+            service_id: service.id,
+            client_id: chosenClientId ? Number(chosenClientId) : null,
+            idempotency_key: submissionKey,
+            payment_choice: paymentChoice,
+            financial_year: '2026-27',
+            notes: [contactNotes, additionalNotes.trim()].filter(Boolean).join('\n\n'),
+            customer_name: form.customer_name.trim(),
+            pan_number: form.pan_number.trim().toUpperCase(),
+            customer_mobile: form.mobile.trim(),
+            customer_email: form.email.trim()
+          }
+        });
+        order = result.order;
+        if (!order?.id) throw new Error('The order was not confirmed. Please retry using the same form.');
+        createdOrderRef.current = order.id;
+        createdOrderPayloadRef.current = order;
+        saveDraft();
+      }
+      if (!order?.id) throw new Error('Unable to retrieve the created order. Please contact support.');
       for (const document of documents) {
+        if (uploadedFileIdsRef.current.has(document.id)) continue;
         const body = new FormData();
         body.append('file', document.file);
         body.append('label', document.requirement.label);
         body.append('requirement_id', document.requirement.id);
-        await api(`/orders/${orderId}/documents`, { method: 'POST', body });
+        await api(`/orders/${order.id}/documents`, { method: 'POST', body, timeoutMs: 120000 });
+        uploadedFileIdsRef.current.add(document.id);
       }
       sessionStorage.removeItem(draftKey);
-      const isPartner = ['partner', 'partners'].includes(String(user.role?.slug || '').toLowerCase());
-      const needsPayment = !isPartner && result.order.payment_first && result.order.status === 'awaiting_payment';
-      navigate(isPartner ? `/partner/jobs/${orderId}` : needsPayment ? `/client/orders/${orderId}/pay` : `/client/orders/${orderId}`, {
+      const needsPayment = Boolean(order.payment_first && order.status === 'awaiting_payment');
+      const target = isPartner
+        ? needsPayment ? `/partner/jobs/${order.id}/pay` : `/partner/jobs/${order.id}`
+        : needsPayment ? `/client/orders/${order.id}/pay` : `/client/orders/${order.id}`;
+      navigate(target, {
         replace: true,
         state: { message: needsPayment
-          ? `${result.order.order_no || 'Your order'} was created. Complete payment to activate processing.`
-          : `${result.order.order_no || 'Your job'} was submitted for review.` }
+          ? `${order.order_no || 'Your order'} was created. Complete UPI payment to activate processing.`
+          : `${order.order_no || 'Your job'} was submitted. ${paymentChoice === 'pay_later' ? 'Payment is deferred and remains outstanding.' : 'Your request is ready for review.'}` }
       });
     } catch (error) {
-      feedback(error.message);
+      feedback(createdOrderRef.current
+        ? `Your order was created (ID ${createdOrderRef.current}), but the upload or confirmation did not finish. ${error.message} Retry to continue the same order, or open the order to upload missing documents.`
+        : error.message);
     } finally {
       setSubmitting(false);
     }
@@ -211,7 +293,7 @@ export default function ServiceApplicationPage() {
         <Link to={`/services/${service.slug}`}><Icon name="chevronLeft" size={14} /> Back to service</Link>
         <span>Application · Job request</span>
       </div>
-      {!user && <div className="application-login-note"><Icon name="shield" size={16} /><span>Already have an account? <button type="button" onClick={() => goToAuth()}>Log in</button> or <button type="button" onClick={() => goToAuth('/register')}>sign up</button> to submit without losing your details.</span></div>}
+      {!user && <div className="application-login-note"><Icon name="shield" size={16} /><span>Already have an account? <button type="button" onClick={() => goToAuth()}>Log in</button> or <button type="button" onClick={() => goToAuth('/register')}>sign up</button> to submit. Your typed details are saved; please reselect any files after signing in.</span></div>}
       <div className="application-layout">
         <aside className="application-summary-card">
           <span className="eyebrow">Service Summary</span>
@@ -237,6 +319,41 @@ export default function ServiceApplicationPage() {
         </aside>
 
         <form className="application-form-card" onSubmit={submitOrder}>
+          <div className="application-form-head">
+            <span className="application-step">STEP 1 · REQUIRED</span>
+            <h1>Choose payment method first</h1>
+            <p>Select how you want to pay for this service. Continue to the customer details and document upload only after making a selection.</p>
+          </div>
+          {message && <div className={`form-message ${messageType}`} role="alert">{message}
+            {createdOrderRef.current && <Link className="application-recover-link" to={['partner','partners'].includes(String(user?.role?.slug || '').toLowerCase()) ? `/partner/jobs/${createdOrderRef.current}` : `/client/orders/${createdOrderRef.current}`}>View created order <Icon name="arrow" size={14}/></Link>}
+          </div>}
+          <fieldset className="application-payment-choice-fieldset" aria-describedby="application-payment-choice-description">
+            <legend>Payment options <span>Choose one</span></legend>
+            <p id="application-payment-choice-description">{checkoutReady === null ? 'Checking available payment methods…' : checkoutReady ? 'No payment is taken on this screen. Your selection determines the next step after job submission.' : 'Checkout is being updated on the server. Payments and order submission will be available when the backend update is complete.'}</p>
+            <div className="application-payment-choice-grid">
+              <label className={`application-payment-choice ${paymentChoice === 'upi' ? 'selected' : ''}`}>
+                <input type="radio" name="payment_choice" value="upi" checked={paymentChoice === 'upi'} onChange={() => choosePayment('upi')} disabled={Boolean(createdOrderRef.current) || checkoutReady !== true || upiAvailable !== true} />
+                <span className="application-payment-choice-icon"><Icon name="wallet" size={21} /></span>
+                <span className="application-payment-choice-label"><strong>Pay with UPI</strong><small>{upiAvailable === null ? 'Checking payment availability…' : upiAvailable ? 'Submit the job, then pay using UPI and provide proof. Payment verification is required before work begins.' : 'UPI is not configured yet. Please select Pay Later or contact support.'}</small></span>
+                <Icon name="check" size={19} className="application-payment-choice-check" />
+              </label>
+              <label className={`application-payment-choice ${paymentChoice === 'pay_later' ? 'selected' : ''}`}>
+                <input type="radio" name="payment_choice" value="pay_later" checked={paymentChoice === 'pay_later'} onChange={() => choosePayment('pay_later')} disabled={Boolean(createdOrderRef.current) || checkoutReady !== true} />
+                <span className="application-payment-choice-icon"><Icon name="file" size={21} /></span>
+                <span className="application-payment-choice-label"><strong>Pay Later</strong><small>Submit the job now with payment outstanding. An unpaid invoice is recorded for follow-up.</small></span>
+                <Icon name="check" size={19} className="application-payment-choice-check" />
+              </label>
+            </div>
+          </fieldset>
+          {!detailsUnlocked && <button type="button" className="button primary full application-continue-button" disabled={!paymentChoice || checkoutReady !== true || (paymentChoice === 'upi' && !upiAvailable)} onClick={continueToJobDetails}>
+            Continue to job details <Icon name="arrow" size={17} />
+          </button>}
+          {detailsUnlocked && <>
+          <div className="application-form-head application-form-head-second">
+            <span className="application-step">STEP 2</span>
+            <h2>Submit job details</h2>
+            <p>Complete your details and upload required documents. Your payment choice is <strong>{paymentChoice === 'upi' ? 'Pay with UPI' : 'Pay Later'}</strong>.</p>
+          </div>
           {['partner','partners'].includes(String(user?.role?.slug || '').toLowerCase()) && <div className="workflow-inline-form">
             <label>Linked client (optional)
               <select className="input" value={chosenClientId} onChange={(event) => {
@@ -254,16 +371,9 @@ export default function ServiceApplicationPage() {
             </label>
             <small>Manage your records in the <Link to="/partner/clients">partner client directory</Link>.</small>
           </div>}
-          <div className="application-form-head">
-            <span className="application-step">STEP 1</span>
-            <h1>Submit job details</h1>
-            <p>Upload all required documents and submit your order. If you are not logged in, you can log in or sign up here without losing the form.</p>
-          </div>
-          {message && <div className={`form-message ${messageType}`}>{message}</div>}
-
-          <section className="application-section">
-            <div className="application-section-heading"><span>How payment works</span><small>No payment is required at job submission.</small></div>
-            <div className="application-payment-note"><strong>Pay after the work is submitted.</strong><span>Once the assigned staff member or partner uploads the completed work, submit your UPI transaction ID and payment proof, or choose “Pay later.” The admin reviews the payment choice and deliverable before release.</span></div>
+          <section className="application-section application-payment-selection-summary" aria-label="Selected payment method">
+            <div className="application-section-heading"><span>Payment selection</span><small>{paymentChoice === 'upi' ? 'UPI payment required after submission' : 'Payment deferred'}</small></div>
+            <p>{paymentChoice === 'upi' ? 'After submission, you will be taken to the UPI payment page. The team begins processing after payment verification.' : 'Your job can be submitted without paying immediately. The amount remains unpaid and will be tracked for later settlement.'}</p>
           </section>
 
           <section className="application-section">
@@ -293,8 +403,9 @@ export default function ServiceApplicationPage() {
             </div>
           </section>
 
-          <button className="button primary full application-submit-button" type="submit" disabled={submitting}>{submitting ? <><span className="spinner" />Submitting order…</> : <>Submit Job Request <Icon name="arrow" size={16} /></>}</button>
-          <small className="application-footnote">Your job will appear in your client or partner workspace after submission. You can add documents later if requested by the assigned worker.</small>
+          <button className="button primary full application-submit-button" type="submit" disabled={submitting}>{submitting ? <><span className="spinner" />{createdOrderRef.current ? 'Uploading documents…' : 'Submitting order…'}</> : <>{createdOrderRef.current ? 'Retry remaining uploads' : paymentChoice === 'upi' ? 'Submit & Continue to UPI' : 'Submit Job · Pay Later'} <Icon name="arrow" size={16} /></>}</button>
+          <small className="application-footnote">Your job will appear in your client or partner workspace. {paymentChoice === 'upi' ? 'UPI payment and verification are required before processing.' : 'Payment will be due later.'} You can upload additional documents from the order page.</small>
+          </>}
         </form>
       </div>
     </div>

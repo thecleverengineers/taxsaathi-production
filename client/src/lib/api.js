@@ -11,15 +11,54 @@ export function assetUrl(value) {
 
 export async function api(path, options = {}) {
   const token = localStorage.getItem('taxsaathi_token');
-  const headers = new Headers(options.headers || {});
+  const { timeoutMs = 90000, ...requestOptions } = options;
+  const headers = new Headers(requestOptions.headers || {});
   if (!headers.has('Accept')) headers.set('Accept', 'application/json');
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-  const response = await fetch(`${API_BASE}/api${path}`, { ...options, headers, credentials: 'include', body: options.body && typeof options.body !== 'string' && !(options.body instanceof FormData) ? JSON.stringify(options.body) : options.body });
-  const contentType = response.headers.get('content-type') || '';
-  const payload = contentType.includes('application/json') ? await response.json() : await response.text();
-  if (!response.ok || (payload && payload.ok === false)) throw new Error(payload?.message || 'Request failed.');
-  return payload;
+  if (requestOptions.body && !(requestOptions.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let abortListener;
+  if (requestOptions.signal) {
+    abortListener = () => controller.abort();
+    if (requestOptions.signal.aborted) controller.abort();
+    else requestOptions.signal.addEventListener('abort', abortListener, { once: true });
+  }
+  try {
+    const response = await fetch(`${API_BASE}/api${path}`, {
+      ...requestOptions,
+      headers,
+      signal: controller.signal,
+      credentials: 'include',
+      body: requestOptions.body && typeof requestOptions.body !== 'string' && !(requestOptions.body instanceof FormData)
+        ? JSON.stringify(requestOptions.body)
+        : requestOptions.body
+    });
+    const contentType = response.headers.get('content-type') || '';
+    const payload = contentType.includes('application/json') ? await response.json() : await response.text();
+    if (!response.ok || (payload && payload.ok === false)) {
+      throw new Error(
+        (typeof payload === 'object' && payload?.message)
+          || `Server returned HTTP ${response.status}. Please retry or contact support.`
+      );
+    }
+    if (typeof payload === 'string' && payload.trim().startsWith('<!DOCTYPE html')) {
+      throw new Error('The API returned a website page instead of data. Please contact support to check the server routing.');
+    }
+    return payload;
+  } catch (error) {
+    if (error?.name === 'AbortError' && !requestOptions.signal?.aborted) {
+      throw new Error('The server took too long to respond. Your form is still here; check your Orders before retrying.');
+    }
+    if (error instanceof TypeError) {
+      throw new Error('Unable to reach the Tax Saathi server. Check your connection and retry. If this continues, contact support.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    if (requestOptions.signal && abortListener) requestOptions.signal.removeEventListener('abort', abortListener);
+  }
 }
 
 export async function downloadBlob(path) {
