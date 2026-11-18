@@ -24,24 +24,43 @@ export function EmptyState({ icon = 'folder', title = 'Nothing here yet.', text 
   return <div className="empty-state"><span className="empty-icon"><Icon name={icon} size={24} /></span><h3>{title}</h3>{text && <p>{text}</p>}{action}</div>;
 }
 
-export function ServiceCard({ service, contact = {} }) {
-  const icon = service.icon_url || service.category?.image_url;
+export function ServiceCard({ service, contact = {}, presentation = {} }) {
+  // Service and category image URLs remain read-only; presentation changes never overwrite them.
+  const icon = service.icon_url || service.category?.image_url || service.category?.image;
   const callHref = phoneHref(contact.phone);
-  const whatsapp = whatsappHref(contact.whatsapp || contact.phone, `${service.title || 'This service'} - I would like to know more.`);
+  const whatsapp = whatsappHref(contact.whatsapp || contact.phone, (service.title || 'This service') + ' - I would like to know more.');
   return <article className="service-card">
-    <Link to={`/services/${service.slug}`} className="service-card-main">
-      <div className="service-card-icon">{icon ? <img src={assetUrl(icon)} alt="" /> : <span>{String(service.title || 'TS').split(/\s+/).slice(0, 2).map((part) => part[0]).join('')}</span>}</div>
-      <div className="service-card-meta"><span>{service.category?.title || service.service_category || 'Tax services'}</span>{service.is_featured && <b>Featured</b>}</div>
+    <Link to={'/services/' + service.slug} className="service-card-main">
+      {presentation.showImages !== false && <div className="service-card-icon">
+        {icon ? <img src={assetUrl(icon)} alt="" loading="lazy" />
+          : <span>{String(service.title || 'TS').split(/\s+/).slice(0, 2).map((part) => part[0]).join('')}</span>}
+      </div>}
+      {(presentation.showCategory !== false || presentation.showFeatured !== false && service.is_featured) &&
+        <div className="service-card-meta">
+          {presentation.showCategory !== false && <span>{service.category?.title || service.service_category || 'Tax services'}</span>}
+          {presentation.showFeatured !== false && service.is_featured && <b>{presentation.featuredLabel || 'Featured'}</b>}
+        </div>}
       <h3>{service.title}</h3>
       <p>{service.excerpt || 'Professional support with a clear digital workflow.'}</p>
     </Link>
     <div className="service-card-bottom">
-      <div className="service-card-price-row"><strong>{money(service.filing_fee)}</strong><Link className="service-card-view" to={`/services/${service.slug}`}>View service <Icon name="arrow" size={15} /></Link></div>
-      <div className="service-card-actions">
-        <a className="service-card-action call" href={callHref || '/contact'}><Icon name="phone" size={13} /> Call us</a>
-        <a className="service-card-action whatsapp" href={whatsapp || '/contact'} target={whatsapp ? '_blank' : undefined} rel={whatsapp ? 'noreferrer' : undefined}><Icon name="chat" size={13} /> WhatsApp</a>
-        <Link className="service-card-action apply" to={`/services/${service.slug}/apply`}>Apply for this Service <Icon name="arrow" size={13} /></Link>
+      <div className="service-card-price-row">
+        {presentation.showPrice !== false && <strong>{service.filing_fee == null
+          ? presentation.emptyFeeLabel || 'Ask for pricing' : money(service.filing_fee)}</strong>}
+        <Link className="service-card-view" to={'/services/' + service.slug}>
+          {presentation.viewLabel || 'View service'} <Icon name="arrow" size={15} />
+        </Link>
       </div>
+      {(presentation.showContactButtons !== false || presentation.showApplyButton !== false) &&
+        <div className="service-card-actions">
+          {presentation.showContactButtons !== false && <>
+            <a className="service-card-action call" href={callHref || '/contact'}><Icon name="phone" size={13} /> {presentation.callLabel || 'Call us'}</a>
+            <a className="service-card-action whatsapp" href={whatsapp || '/contact'} target={whatsapp ? '_blank' : undefined}
+              rel={whatsapp ? 'noreferrer' : undefined}><Icon name="chat" size={13} /> {presentation.whatsappLabel || 'WhatsApp'}</a>
+          </>}
+          {presentation.showApplyButton !== false && <Link className="service-card-action apply" to={'/services/' + service.slug + '/apply'}>
+            {presentation.applyLabel || 'Apply for this Service'} <Icon name="arrow" size={13} /></Link>}
+        </div>}
     </div>
   </article>;
 }
