@@ -302,6 +302,7 @@ function paymentDetails(settings) {
     ifsc_code: String(settings.payment_ifsc_code || '').trim(),
     branch: String(settings.payment_branch || '').trim(),
     instructions: String(settings.payment_instructions || '').trim(),
+    checkout_payment_choice_enabled: true,
     razorpay_enabled: Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
     razorpay_key_id: String(process.env.RAZORPAY_KEY_ID || '').trim()
   };
