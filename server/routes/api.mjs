@@ -881,6 +881,11 @@ router.post('/auth/register/otp/request', otpRateLimit, asyncRoute(async (reques
   const email = String(request.body.email || '').trim().toLowerCase();
   const phone = normalizePhone(request.body.phone || request.body.mobile);
   const password = String(request.body.password || '');
+  const clientType = String(request.body.client_type || 'individual').trim().toLowerCase();
+  const companyName = String(request.body.company_name || '').trim().slice(0, 150);
+  if (!['individual', 'corporate'].includes(clientType)) return responseError(response, 'Choose Individual or Corporate account.', 422);
+  if (clientType === 'corporate' && !companyName) return responseError(response, 'Company name is required for Corporate accounts.', 422);
+
   if (!name || !email || !phone || password.length < 6) return responseError(response, 'Name, email, mobile number, and a six-character password are required.');
   if (await findUserByEmail(store, email)) return responseError(response, 'An account with this email already exists.', 409);
   if (await findUserByPhone(store, phone)) return responseError(response, 'An account with this mobile number already exists.', 409);
@@ -905,6 +910,11 @@ router.post('/auth/register', asyncRoute(async (request, response) => {
   const email = String(request.body.email || '').trim().toLowerCase();
   const phone = normalizePhone(request.body.phone || request.body.mobile);
   const password = String(request.body.password || '');
+  const clientType = String(request.body.client_type || 'individual').trim().toLowerCase();
+  const companyName = String(request.body.company_name || '').trim().slice(0, 150);
+  if (!['individual', 'corporate'].includes(clientType)) return responseError(response, 'Choose Individual or Corporate account.', 422);
+  if (clientType === 'corporate' && !companyName) return responseError(response, 'Company name is required for Corporate accounts.', 422);
+
   const requestId = String(request.body.otp_request_id || '');
   const otp = String(request.body.otp || '').trim();
   if (!name || !email || !phone || password.length < 6 || !requestId || !otp) {
@@ -916,7 +926,9 @@ router.post('/auth/register', asyncRoute(async (request, response) => {
   if (await findUserByEmail(store, email)) return responseError(response, 'An account with this email already exists.', 409);
   if (await findUserByPhone(store, phone)) return responseError(response, 'An account with this mobile number already exists.', 409);
 
-  const client = await store.insert('clients', { name, phone, email, client_type: 'individual', status: 'active', created_at: isoNow(), updated_at: isoNow() });
+  const client = await store.insert('clients', { name, phone, email, client_type: clientType,
+    company_name: clientType === 'corporate' ? companyName : '', contact_person: clientType === 'corporate' ? name : '',
+    status: 'active', created_at: isoNow(), updated_at: isoNow() });
   const user = await store.insert('users', {
     role_id: 5,
     client_id: client.id,
