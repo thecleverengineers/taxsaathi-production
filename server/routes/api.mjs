@@ -2842,7 +2842,22 @@ router.get('/admin/intelligence/overview', ...roleGuard(request => request.app.l
   const [models, users, leads, orders, notifications, audit] = await Promise.all([store.find('intelligence_models', {}, { sort: { id: -1 }}), store.find('users', {}, { limit: 1000 }), store.find('leads', {}, { limit: 1000 }), store.find('orders', {}, { limit: 1000 }), store.find('notifications', {}, { sort: { id: -1 }, limit: 1000 }), store.find('audit_logs', {}, { sort: { id: -1 }, limit: 1000 })]);
   const convertedLeads = leads.filter((row) => ['converted', 'closed'].includes(String(row.status || '').toLowerCase())).length;
   const completedOrders = orders.filter((row) => ['completed', 'closed'].includes(String(row.status || '').toLowerCase())).length;
-  response.json({ ok: true, models, metrics: { data_records: users.length + leads.length + orders.length, lead_conversion_rate: leads.length ? Math.round(convertedLeads / leads.length * 100) : 0, order_completion_rate: orders.length ? Math.round(completedOrders / orders.length * 100) : 0, notification_delivery_records: notifications.filter((row) => row.delivered_at || row.is_read).length, audit_events: audit.length }, safeguards: ['Server-side authorization is required.', 'AI output is advisory and source-linked.', 'Human approval is required for official filings, payments, and legal responses.', 'No quantum or deep-learning result is presented without a configured model/provider.'] });
+  // Live, deterministic operational insights. These are NOT predictions or machine-learning output.
+  const today = isoNow().slice(0, 10);
+  const active = orders.filter(row => !['completed', 'closed', 'cancelled', 'rejected'].includes(String(row.status || '').toLowerCase()));
+  const insights = [
+    { code: 'overdue', label: 'Overdue service cases', count: active.filter(row => row.due_date && String(row.due_date).slice(0, 10) < today).length,
+      severity: 'high', explanation: 'Open orders past their recorded due date.', url: '/admin/orders' },
+    { code: 'unassigned', label: 'Unassigned service cases', count: active.filter(row => !row.assigned_user_id && row.status !== 'awaiting_payment').length,
+      severity: 'high', explanation: 'Open orders without a staff or partner assignment.', url: '/admin/workflow' },
+    { code: 'approval', label: 'Deliverables awaiting approval', count: orders.filter(row => row.status === 'awaiting_approval').length,
+      severity: 'normal', explanation: 'Submitted outputs pending an administrator review.', url: '/admin/orders' },
+    { code: 'payments', label: 'Payment follow-ups', count: orders.filter(row => ['unpaid','deferred','pending_review'].includes(String(row.payment_status || '').toLowerCase())).length,
+      severity: 'normal', explanation: 'Payment remains outstanding or needs proof verification.', url: '/admin/orders' },
+    { code: 'leads', label: 'Uncontacted leads', count: leads.filter(row => String(row.status || '').toLowerCase() === 'new').length,
+      severity: 'normal', explanation: 'Incoming website enquiries still marked New.', url: '/admin/operations/leads' }
+  ];
+  response.json({ ok: true, models, insights, metrics: { data_records: users.length + leads.length + orders.length, lead_conversion_rate: leads.length ? Math.round(convertedLeads / leads.length * 100) : 0, order_completion_rate: orders.length ? Math.round(completedOrders / orders.length * 100) : 0, notification_delivery_records: notifications.filter((row) => row.delivered_at || row.is_read).length, audit_events: audit.length }, safeguards: ['Server-side authorization is required.', 'AI output is advisory and source-linked.', 'Human approval is required for official filings, payments, and legal responses.', 'No quantum or deep-learning result is presented without a configured model/provider.'] });
 }));
 
 router.post('/admin/intelligence/models', ...roleGuard(request => request.app.locals.store, 'admin'), asyncRoute(async (request, response) => {
