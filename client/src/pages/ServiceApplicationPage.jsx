@@ -57,11 +57,24 @@ export default function ServiceApplicationPage() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('danger');
   const [submitting, setSubmitting] = useState(false);
+  const [upiAvailable, setUpiAvailable] = useState(null);
 
   useEffect(() => {
     setData(null);
     api(`/public/services/${slug}`).then(setData).catch(() => setData({ service: null }));
   }, [slug]);
+
+  useEffect(() => {
+    let active = true;
+    api('/payment-details')
+      .then(({ payment }) => {
+        if (!active) return;
+        const upiId = String(payment?.upi_id || '').trim();
+        setUpiAvailable(Boolean((upiId && upiId !== 'taxsaathi@upi') || payment?.qr_code || payment?.razorpay_enabled));
+      })
+      .catch(() => { if (active) setUpiAvailable(false); });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -96,7 +109,11 @@ export default function ServiceApplicationPage() {
   }
 
   function saveDraft() {
-    sessionStorage.setItem(draftKey, JSON.stringify({ ...form, additional_notes: additionalNotes, client_id: chosenClientId, payment_choice: paymentChoice, created_order_id: createdOrderRef.current, idempotency_key: submissionKey }));
+    try {
+      sessionStorage.setItem(draftKey, JSON.stringify({ ...form, additional_notes: additionalNotes, client_id: chosenClientId, payment_choice: paymentChoice, created_order_id: createdOrderRef.current, idempotency_key: submissionKey }));
+    } catch {
+      // Session storage can be unavailable in private browsing. Keep the in-memory form usable.
+    }
   }
 
   function goToAuth(path = '/auth') {
@@ -156,6 +173,10 @@ export default function ServiceApplicationPage() {
       feedback('Choose Pay with UPI or Pay Later before continuing.');
       return;
     }
+    if (paymentChoice === 'upi' && !upiAvailable) {
+      feedback('UPI payment is not configured. Choose Pay Later for now, or contact support.');
+      return;
+    }
     setDetailsUnlocked(true);
     feedback('');
     saveDraft();
@@ -167,6 +188,10 @@ export default function ServiceApplicationPage() {
     setMessage('');
     if (!paymentChoice || !detailsUnlocked) {
       feedback('Choose a payment method first, then continue to the job details.');
+      return;
+    }
+    if (paymentChoice === 'upi' && !upiAvailable && !createdOrderRef.current) {
+      feedback('UPI payment is temporarily unavailable. Choose Pay Later or contact support.');
       return;
     }
     if (!user) {
@@ -297,9 +322,9 @@ export default function ServiceApplicationPage() {
             <p id="application-payment-choice-description">No payment is taken on this screen. Your selection determines the next step after job submission.</p>
             <div className="application-payment-choice-grid">
               <label className={`application-payment-choice ${paymentChoice === 'upi' ? 'selected' : ''}`}>
-                <input type="radio" name="payment_choice" value="upi" checked={paymentChoice === 'upi'} onChange={() => choosePayment('upi')} disabled={Boolean(createdOrderRef.current)} />
+                <input type="radio" name="payment_choice" value="upi" checked={paymentChoice === 'upi'} onChange={() => choosePayment('upi')} disabled={Boolean(createdOrderRef.current) || upiAvailable !== true} />
                 <span className="application-payment-choice-icon"><Icon name="wallet" size={21} /></span>
-                <span className="application-payment-choice-label"><strong>Pay with UPI</strong><small>Submit the job, then pay using UPI and provide proof. Payment verification is required before work begins.</small></span>
+                <span className="application-payment-choice-label"><strong>Pay with UPI</strong><small>{upiAvailable === null ? 'Checking payment availability…' : upiAvailable ? 'Submit the job, then pay using UPI and provide proof. Payment verification is required before work begins.' : 'UPI is not configured yet. Please select Pay Later or contact support.'}</small></span>
                 <Icon name="check" size={19} className="application-payment-choice-check" />
               </label>
               <label className={`application-payment-choice ${paymentChoice === 'pay_later' ? 'selected' : ''}`}>
@@ -310,7 +335,7 @@ export default function ServiceApplicationPage() {
               </label>
             </div>
           </fieldset>
-          {!detailsUnlocked && <button type="button" className="button primary full application-continue-button" disabled={!paymentChoice} onClick={continueToJobDetails}>
+          {!detailsUnlocked && <button type="button" className="button primary full application-continue-button" disabled={!paymentChoice || (paymentChoice === 'upi' && !upiAvailable)} onClick={continueToJobDetails}>
             Continue to job details <Icon name="arrow" size={17} />
           </button>}
           {detailsUnlocked && <>
