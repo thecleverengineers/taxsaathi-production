@@ -93,13 +93,25 @@ export default function ServicesPageBuilder() {
   }, []);
   const orderedCategories = useMemo(() => {
     if (!content) return categories;
-    const order = content.sections.categories.customOrder || [];
+    const categorySettings = content.sections.categories;
+    const mode = categorySettings.sortMode;
+    const order = categorySettings.customOrder || [];
+    const legacyRank = (category) => {
+      const slug = String(category.slug || '');
+      const patterns = [/income.tax/, /gst/, /business.registration/, /account|audit/, /roc/, /trademark/];
+      const index = patterns.findIndex((pattern) => pattern.test(slug));
+      return index < 0 ? patterns.length : index;
+    };
     return [...categories].sort((a, b) => {
-      const ai = order.indexOf(a.slug), bi = order.indexOf(b.slug);
-      if (ai >= 0 && bi >= 0) return ai - bi;
-      if (ai >= 0) return -1;
-      if (bi >= 0) return 1;
-      return Number(a.sort_order || 0) - Number(b.sort_order || 0);
+      if (mode === 'alphabetical') return String(a.title || '').localeCompare(String(b.title || ''));
+      if (mode === 'current') return legacyRank(a) - legacyRank(b);
+      if (mode === 'custom') {
+        const ai = order.indexOf(a.slug), bi = order.indexOf(b.slug);
+        if (ai >= 0 && bi >= 0) return ai - bi;
+        if (ai >= 0) return -1;
+        if (bi >= 0) return 1;
+      }
+      return Number(a.sort_order || 0) - Number(b.sort_order || 0) || Number(a.id) - Number(b.id);
     });
   }, [categories, content]);
   if (!content) return <div className="workspace-page"><h2>Services Page Builder</h2><p>{notice || 'Loading page settings…'}</p></div>;
