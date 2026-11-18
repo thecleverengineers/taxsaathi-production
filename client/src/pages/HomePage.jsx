@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, assetUrl } from '../lib/api';
 import { money } from '../lib/format';
 import Icon from '../components/Icons';
 import './home-premium.css';
+import './home-carousel.css';
 
 const editorialSlides = [
   {
@@ -54,27 +55,43 @@ function ServiceCard({ service }) {
   );
 }
 
-function HeroVisual() {
-  return (
-    <div className="ts-home-hero-visual">
-      <div className="ts-home-halo ts-home-halo-outer" aria-hidden="true" />
-      <div className="ts-home-halo ts-home-halo-inner" aria-hidden="true" />
-      <div className="ts-home-logo-plinth">
-        <img src="/taxsaathi-logo.png" alt="Tax Saathi logo — Less Stress, More Success" />
-      </div>
-      <div className="ts-home-hero-script">Less Stress, More Success.</div>
-      <div className="ts-home-floating ts-home-floating-top" aria-hidden="true">
-        <span className="ts-home-floating-icon"><Icon name="shield" size={19} /></span>
-        <span><strong>Secure client workspace</strong><small>Documents and service records</small></span>
-      </div>
-      <div className="ts-home-floating ts-home-floating-bottom" aria-hidden="true">
-        <div className="ts-home-mini-bars"><i /><i /><i /><i /><i /></div>
-        <span><strong>Clear progress</strong><small>From request to delivery</small></span>
-      </div>
-      <div className="ts-home-hero-shine" aria-hidden="true" />
-    </div>
-  );
-}
+const heroSlides = [
+  {
+    eyebrow: 'TAX · GST · COMPLIANCE',
+    title: 'Your Taxes, Our Priority.',
+    accent: 'Your Peace of Mind.',
+    description: 'Simplify tax filing and compliance with expert guidance you can trust.',
+    imageDescription: 'Relaxed Tax Saathi customer working from a warmly lit home office'
+  },
+  {
+    eyebrow: 'PERSONALISED TAX SUPPORT',
+    title: 'Expert Guidance.',
+    accent: 'A Personal Touch.',
+    description: 'From everyday tax needs to business compliance, we are here to make things easier.',
+    imageDescription: 'Friendly consultation between a Tax Saathi advisor and customer'
+  },
+  {
+    eyebrow: 'SIMPLE · CLEAR · COMFORTABLE',
+    title: 'Less Paperwork.',
+    accent: 'More Peace of Mind.',
+    description: 'Experience a simpler way to manage your taxes, filings and financial responsibilities.',
+    imageDescription: 'Smiling woman reviewing her taxes in a comfortable home-office setting'
+  },
+  {
+    eyebrow: 'TRUSTED FINANCIAL GUIDANCE',
+    title: 'The Right Support.',
+    accent: 'For Every Financial Step.',
+    description: 'Reliable tax and compliance services designed around your personal and business needs.',
+    imageDescription: 'Professionals collaborating around a laptop in a welcoming office'
+  },
+  {
+    eyebrow: 'YOUR COMPLIANCE PARTNER',
+    title: 'Together, We Make',
+    accent: 'Compliance Simple.',
+    description: 'Your trusted partner for tax filing, business registrations and seamless compliance management.',
+    imageDescription: 'Tax Saathi advisor providing friendly guidance to two customers'
+  }
+];
 
 function SectionHeading({ eyebrow, title, description, action, href }) {
   return (
@@ -88,6 +105,9 @@ function SectionHeading({ eyebrow, title, description, action, href }) {
 export default function HomePage() {
   const [data, setData] = useState(emptyHomeData);
   const [slide, setSlide] = useState(0);
+  const [heroSlide, setHeroSlide] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
+  const heroTouchStart = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -105,6 +125,23 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (heroPaused || (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)) return undefined;
+    const timer = window.setInterval(() => setHeroSlide((current) => (current + 1) % heroSlides.length), 7200);
+    return () => window.clearInterval(timer);
+  }, [heroPaused]);
+
+  const moveHero = (change) => setHeroSlide((current) => (current + change + heroSlides.length) % heroSlides.length);
+  const handleHeroTouchStart = (event) => { heroTouchStart.current = event.changedTouches[0]?.clientX ?? null; };
+  const handleHeroTouchEnd = (event) => {
+    const startX = heroTouchStart.current;
+    heroTouchStart.current = null;
+    if (startX == null) return;
+    const distance = (event.changedTouches[0]?.clientX ?? startX) - startX;
+    if (Math.abs(distance) > 42) moveHero(distance > 0 ? -1 : 1);
+  };
+  const currentHero = heroSlides[heroSlide];
+
   const settings = data.settings || {};
   const slides = editorialSlides.map((item, index) => ({
     ...item,
@@ -120,29 +157,64 @@ export default function HomePage() {
 
   return (
     <div className="ts-home">
-      <section className="ts-home-hero">
-        <div className="ts-home-hero-ring" aria-hidden="true" />
-        <div className="container-wide ts-home-hero-grid">
-          <div className="ts-home-hero-content">
-            <span className="ts-home-kicker ts-home-kicker-light"><span className="ts-home-kicker-dot" /> TAX · GST · COMPLIANCE · ADVISORY</span>
-            <h1>Less stress.<br /><em>More success.</em></h1>
-            <p>Taxes and compliance, made simpler. Discover the right service, manage your paperwork, and stay informed at every step with Tax Saathi.</p>
-            <div className="ts-home-hero-actions">
-              <Link to="/services" className="ts-home-button ts-home-button-gold">Explore Services <GoldArrow size={19} /></Link>
-              <Link to="/auth" className="ts-home-button ts-home-button-ghost">My Workspace <GoldArrow size={18} /></Link>
+      <section
+        className="ts-image-hero"
+        aria-label="Tax Saathi services and guidance"
+        onMouseEnter={() => setHeroPaused(true)}
+        onMouseLeave={() => setHeroPaused(false)}
+        onFocusCapture={() => setHeroPaused(true)}
+        onBlurCapture={() => setHeroPaused(false)}
+        onTouchStart={handleHeroTouchStart}
+        onTouchEnd={handleHeroTouchEnd}
+      >
+        <div className="container-wide ts-image-hero-shell">
+          <div className="ts-image-hero-media">
+            {heroSlides.map((item, index) => (
+              <div
+                key={item.title}
+                className={'ts-image-hero-photo' + (index === heroSlide ? ' is-active' : '')}
+                role="img"
+                aria-label={item.imageDescription}
+                aria-hidden={index !== heroSlide}
+                style={{ backgroundPosition: (index * 25) + '% 50%' }}
+              />
+            ))}
+            <span className="ts-image-hero-media-brand">
+              <img src="/taxsaathi-logo.png" alt="" /> TAX SAATHI
+            </span>
+          </div>
+          <div className="ts-image-hero-copy">
+            <span className="ts-image-hero-label">{currentHero.eyebrow}</span>
+            <h1>{currentHero.title}<em>{currentHero.accent}</em></h1>
+            <p className="ts-image-hero-description">{currentHero.description}</p>
+            <div className="ts-image-hero-actions">
+              <Link to="/services" className="ts-home-button ts-home-button-gold">Explore Services <GoldArrow size={18} /></Link>
+              <Link to="/auth" className="ts-home-button ts-home-button-ghost">My Workspace <GoldArrow size={17} /></Link>
             </div>
-            <a href="#taxsaathi-intro-video" className="ts-home-hero-video-link" aria-label="Watch the TaxSaathi introduction video">
-              <span aria-hidden="true">▶</span> Watch our 10-second film
-            </a>
-            <div className="ts-home-hero-assurances">
-              <span><Icon name="shield" size={17} /> Secure records</span>
-              <span><Icon name="check" size={17} /> Guided process</span>
-              <span><Icon name="headphones" size={17} /> Human support</span>
+            <div className="ts-image-hero-nav" aria-label="Choose a hero slide">
+              <button type="button" className="ts-image-hero-arrow" aria-label="Previous slide" onClick={() => moveHero(-1)}>‹</button>
+              <div className="ts-image-hero-dots">
+                {heroSlides.map((item, index) => (
+                  <button
+                    type="button"
+                    key={item.title}
+                    className={'ts-image-hero-dot' + (index === heroSlide ? ' is-active' : '')}
+                    aria-label={'Show slide ' + (index + 1) + ': ' + item.title}
+                    aria-pressed={index === heroSlide}
+                    onClick={() => setHeroSlide(index)}
+                  />
+                ))}
+              </div>
+              <button type="button" className="ts-image-hero-arrow" aria-label="Next slide" onClick={() => moveHero(1)}>›</button>
+              <span className="ts-image-hero-counter">{String(heroSlide + 1).padStart(2, '0')} / {String(heroSlides.length).padStart(2, '0')}</span>
+            </div>
+            <div className="ts-image-hero-assurances">
+              <span><Icon name="shield" size={16} /> Secure records</span>
+              <span><Icon name="check" size={16} /> Guided process</span>
+              <span><Icon name="headphones" size={16} /> Human support</span>
             </div>
           </div>
-          <HeroVisual />
         </div>
-        <div className="ts-home-hero-base" aria-hidden="true" />
       </section>
 
       <section className="ts-home-trust container-wide" aria-label="What you can do with Tax Saathi">
