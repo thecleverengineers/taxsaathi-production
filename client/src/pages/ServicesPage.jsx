@@ -145,7 +145,7 @@ export default function ServicesPage() {
     {browser.enabled !== false && <section id="browse-services" className="container-wide ts-services-catalog" aria-labelledby="browse-services-title">
       <div className="ts-services-toolbar">
         <h2 id="browse-services-title" tabIndex={-1}>{heading}</h2>
-        <div className="ts-services-controls">
+        <div className={"ts-services-controls" + (browser.showSearch === false || browser.showCategoryFilter === false ? " is-single" : "")}>
           {browser.showSearch !== false && <label className="ts-services-search">
             <Icon name="search" aria-hidden="true" />
             <input type="search" aria-label="Search services" placeholder={browser.searchPlaceholder || 'Search services'}
