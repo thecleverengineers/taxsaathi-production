@@ -95,6 +95,7 @@ export default function PublicLayout() {
   const sidebarToggleRef = useRef(null);
   const location = useLocation();
   const onHome = location.pathname === '/';
+  const onServices = /^\/services\/?$/.test(location.pathname);
   const [servicesOpen, setServicesOpen] = useState(false);
   const servicesDropdownRef = useRef(null);
 
@@ -171,7 +172,7 @@ export default function PublicLayout() {
   }
 
   return (
-    <div className={onHome ? 'public-site ts-brand-site ts-home-site' : 'public-site ts-brand-site'}>
+    <div className={`public-site ts-brand-site${onHome ? ' ts-home-site' : ''}${onServices ? ' ts-services-site' : ''}`}>
       <div className="ambient-orb orb-one" />
       <div className="ambient-orb orb-two" />
       <header className="public-header">
@@ -194,7 +195,7 @@ export default function PublicLayout() {
             <div className="nav-dropdown" ref={servicesDropdownRef}>
               <button
                 type="button"
-                className={`public-nav-link dropdown-trigger services-trigger ${servicesOpen ? 'active open' : ''}`}
+                className={`public-nav-link dropdown-trigger services-trigger ${servicesOpen ? 'active open' : onServices ? 'active' : ''}`}
                 onClick={() => setServicesOpen((value) => !value)}
                 aria-expanded={servicesOpen}
                 aria-haspopup="true"
@@ -226,7 +227,7 @@ export default function PublicLayout() {
             ? <PublicAccountMenu user={user} logout={logout} ordersPath={ordersPath} closeMenus={closeMenus} />
             : <Link to="/auth" className="public-login-trigger" aria-label="Login to Tax Saathi" onClick={closeMenus}>
                 <Icon name="userCircle" size={19} aria-hidden="true" />
-                <span>Login</span>
+                <span>{onServices ? 'Sign in' : 'Login'}</span>
               </Link>}
         </div>
       </header>
