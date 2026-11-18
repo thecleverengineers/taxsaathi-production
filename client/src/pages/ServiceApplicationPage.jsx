@@ -216,7 +216,7 @@ export default function ServiceApplicationPage() {
     }
     const missing = requiredRequirements.filter((requirement) => !attachedFor(requirement.id).length);
     if (missing.length && !createdOrderRef.current) {
-      feedback(\`Please add: \${missing.map((item) => item.label).join(', ')}\`);
+      feedback(`Please add: ${missing.map((item) => item.label).join(', ')}`);
       return;
     }
     saveDraft();
@@ -224,16 +224,16 @@ export default function ServiceApplicationPage() {
     try {
       let order = createdOrderPayloadRef.current;
       if (!order && createdOrderRef.current) {
-        const existing = await api(\`/orders/\${createdOrderRef.current}\`, { timeoutMs: 45000 });
+        const existing = await api(`/orders/${createdOrderRef.current}`, { timeoutMs: 45000 });
         order = existing.order;
       }
       if (!order) {
         const contactNotes = [
           'Customer contact details:',
-          \`Name as per PAN: \${form.customer_name.trim()}\`,
-          \`PAN Number: \${form.pan_number.trim().toUpperCase()}\`,
-          \`Mobile Number: \${form.mobile.trim()}\`,
-          \`Email Address: \${form.email.trim()}\`
+          `Name as per PAN: ${form.customer_name.trim()}`,
+          `PAN Number: ${form.pan_number.trim().toUpperCase()}`,
+          `Mobile Number: ${form.mobile.trim()}`,
+          `Email Address: ${form.email.trim()}`
         ].join('\n');
         const result = await api('/orders', {
           method: 'POST',
@@ -264,23 +264,23 @@ export default function ServiceApplicationPage() {
         body.append('file', document.file);
         body.append('label', document.requirement.label);
         body.append('requirement_id', document.requirement.id);
-        await api(\`/orders/\${order.id}/documents\`, { method: 'POST', body, timeoutMs: 120000 });
+        await api(`/orders/${order.id}/documents`, { method: 'POST', body, timeoutMs: 120000 });
         uploadedFileIdsRef.current.add(document.id);
       }
       sessionStorage.removeItem(draftKey);
       const needsPayment = Boolean(order.payment_first && order.status === 'awaiting_payment');
       const target = isPartner
-        ? needsPayment ? \`/partner/jobs/\${order.id}/pay\` : \`/partner/jobs/\${order.id}\`
-        : needsPayment ? \`/client/orders/\${order.id}/pay\` : \`/client/orders/\${order.id}\`;
+        ? needsPayment ? `/partner/jobs/${order.id}/pay` : `/partner/jobs/${order.id}`
+        : needsPayment ? `/client/orders/${order.id}/pay` : `/client/orders/${order.id}`;
       navigate(target, {
         replace: true,
         state: { message: needsPayment
-          ? \`\${order.order_no || 'Your order'} was created. Complete UPI payment to activate processing.\`
-          : \`\${order.order_no || 'Your job'} was submitted. \${paymentChoice === 'pay_later' ? 'Payment is deferred and remains outstanding.' : 'Your request is ready for review.'}\` }
+          ? `${order.order_no || 'Your order'} was created. Complete UPI payment to activate processing.`
+          : `${order.order_no || 'Your job'} was submitted. ${paymentChoice === 'pay_later' ? 'Payment is deferred and remains outstanding.' : 'Your request is ready for review.'}` }
       });
     } catch (error) {
       feedback(createdOrderRef.current
-        ? \`Your order was created (ID \${createdOrderRef.current}), but the upload or confirmation did not finish. \${error.message} Retry to continue the same order, or open the order to upload missing documents.\`
+        ? `Your order was created (ID ${createdOrderRef.current}), but the upload or confirmation did not finish. ${error.message} Retry to continue the same order, or open the order to upload missing documents.`
         : error.message);
     } finally {
       setSubmitting(false);
