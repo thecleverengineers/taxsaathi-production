@@ -293,7 +293,7 @@ export default function ServiceApplicationPage() {
         <Link to={`/services/${service.slug}`}><Icon name="chevronLeft" size={14} /> Back to service</Link>
         <span>Application · Job request</span>
       </div>
-      {!user && <div className="application-login-note"><Icon name="shield" size={16} /><span>Already have an account? <button type="button" onClick={() => goToAuth()}>Log in</button> or <button type="button" onClick={() => goToAuth('/register')}>sign up</button> to submit without losing your details.</span></div>}
+      {!user && <div className="application-login-note"><Icon name="shield" size={16} /><span>Already have an account? <button type="button" onClick={() => goToAuth()}>Log in</button> or <button type="button" onClick={() => goToAuth('/register')}>sign up</button> to submit. Your typed details are saved; please reselect any files after signing in.</span></div>}
       <div className="application-layout">
         <aside className="application-summary-card">
           <span className="eyebrow">Service Summary</span>
