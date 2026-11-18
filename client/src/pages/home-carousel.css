@@ -39,7 +39,7 @@
 .ts-image-hero-photo {
   position:absolute;
   inset:0;
-  background-image:url('/media/taxsaathi-hero-collection.avif');
+  background-image:url('/media/taxsaathi-hero-collection.webp');
   background-repeat:no-repeat;
   background-size:500% 100%;
   opacity:0;
