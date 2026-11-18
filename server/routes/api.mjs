@@ -992,6 +992,12 @@ router.post('/auth/forgot-password/reset', asyncRoute(async (request, response) 
 
 router.get('/auth/me', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
   const store = request.app.locals.store;
+  // Restore the HttpOnly session cookie for valid legacy localStorage-only logins.
+  // Image endpoints, background event streams and push subscriptions cannot attach a Bearer header.
+  const authorization = String(request.headers.authorization || '');
+  if (!request.cookies?.taxsaathi_token && authorization.startsWith('Bearer ')) {
+    setTokenCookie(response, authorization.slice(7));
+  }
   response.json({ ok: true, user: await currentUserResponse(store, request.auth.user) });
 }));
 
