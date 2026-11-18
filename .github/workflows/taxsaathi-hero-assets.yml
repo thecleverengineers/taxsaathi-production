@@ -1,0 +1,58 @@
+name: Optimize Tax Saathi homepage hero assets
+
+on:
+  push:
+    branches:
+      - feat/taxsaathi-image-hero-20261118
+    paths:
+      - 'client/public/media/taxsaathi-hero-source-*.png'
+      - '.github/workflows/taxsaathi-hero-assets.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/taxsaathi-image-hero-20261118
+          persist-credentials: true
+      - name: Install image optimization tools
+        run: python -m pip install --disable-pip-version-check pillow==11.3.0
+      - name: Generate optimized five-slide WebP sprite
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          root = Path('client/public/media')
+          width, height = 850, 478
+          canvas = Image.new('RGB', (width * 5, height))
+          for index in range(1, 6):
+              path = root / f'taxsaathi-hero-source-{index}.png'
+              if not path.is_file():
+                  raise SystemExit(f'Missing hero source: {path}')
+              with Image.open(path) as source:
+                  panel = source.convert('RGB').resize((width, height), Image.Resampling.LANCZOS)
+              canvas.paste(panel, ((index - 1) * width, 0))
+          dest = root / 'taxsaathi-hero-collection.webp'
+          canvas.save(dest, format='WEBP', quality=76, method=6)
+          print(f'Created {dest}: {dest.stat().st_size} bytes')
+          assert dest.stat().st_size < 500000
+          PY
+      - name: Store optimized asset and remove heavyweight source PNGs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -- client/public/media/taxsaathi-hero-source-{1..5}.png
+          git add client/public/media/taxsaathi-hero-collection.webp
+          git commit -m 'perf(home): optimize five Tax Saathi lifestyle hero images into WebP sprite'
+          git push origin HEAD:feat/taxsaathi-image-hero-20261118
