@@ -4,13 +4,13 @@ import { DEFAULT_HOME, HOME_SECTIONS, homeId, normalizeHome } from '../lib/home-
 import './home-builder.css';
 
 const sectionMeta = {
-  hero: { eyebrow: 'Homepage carousel', help: 'Add, remove, reorder and upload separate images or videos for each hero slide.', fields: [['autoplayMs', 'Slide rotation (milliseconds)', 'number']] },
+  hero: { eyebrow: 'Homepage carousel', help: 'Add, remove, reorder and upload separate images or videos for each hero slide.', fields: [['autoplayMs', 'Slide rotation (milliseconds)', 'number'], ['assuranceOne', 'Assurance 1'], ['assuranceTwo', 'Assurance 2'], ['assuranceThree', 'Assurance 3']] },
   trust: { eyebrow: 'Value propositions', fields: [['title', 'Section title'], ['description', 'Supporting line']] },
   video: { eyebrow: 'Promotional media', fields: [['eyebrow', 'Overline'], ['title', 'Headline'], ['accent', 'Emphasised headline'], ['description', 'Description', 'textarea'], ['mediaUrl', 'Video URL', 'video'], ['posterUrl', 'Poster image', 'image'], ['ctaLabel', 'Button label'], ['ctaLink', 'Button link'], ['supportingText', 'Trust message'], ['caption', 'Video footer label'], ['metadata', 'Video footer metadata']] },
   services: { eyebrow: 'Live catalogue', help: 'Cards and prices come directly from Admin → Services. This section controls the presentation.', fields: [['eyebrow', 'Overline'], ['title', 'Headline'], ['description', 'Description', 'textarea'], ['actionLabel', 'View all label'], ['actionLink', 'View all link'], ['limit', 'Number of services (1–12)', 'number']] },
   categories: { eyebrow: 'Live service categories', help: 'Category cards are managed through the service catalogue. Edit this section’s heading and display count here.', fields: [['eyebrow', 'Overline'], ['title', 'Headline'], ['description', 'Description', 'textarea'], ['limit', 'Number of categories (1–12)', 'number']] },
   editorial: { eyebrow: 'Image and text highlights', fields: [['ctaLabel', 'Button label'], ['ctaLink', 'Button link'], ['autoplayMs', 'Rotation (milliseconds)', 'number']] },
-  workflow: { eyebrow: 'Customer journey', fields: [['eyebrow', 'Overline'], ['title', 'Headline'], ['accent', 'Emphasised headline'], ['description', 'Description', 'textarea'], ['ctaLabel', 'Button label'], ['ctaLink', 'Button link']] },
+  workflow: { eyebrow: 'Customer journey', fields: [['eyebrow', 'Overline'], ['title', 'Headline'], ['accent', 'Emphasised headline'], ['description', 'Description', 'textarea'], ['ctaLabel', 'Button label'], ['ctaLink', 'Button link'], ['illustrationTitle', 'Dashboard illustration title'], ['illustrationDescription', 'Dashboard illustration subtitle'], ['illustrationStageOne', 'Diagram stage 1'], ['illustrationStageTwo', 'Diagram stage 2'], ['illustrationStageThree', 'Diagram stage 3'], ['illustrationFooter', 'Diagram footer'], ['illustrationFloatOne', 'Diagram callout 1'], ['illustrationFloatTwo', 'Diagram callout 2']] },
   testimonials: { eyebrow: 'Client reviews', help: 'Reviews use the existing published testimonial records.', fields: [['eyebrow', 'Overline'], ['title', 'Headline'], ['limit', 'Maximum items (1–12)', 'number']] },
   faq: { eyebrow: 'Knowledge base', help: 'Questions and answers come from the existing FAQ records.', fields: [['eyebrow', 'Overline'], ['title', 'Headline'], ['limit', 'Maximum items (1–12)', 'number']] },
   cta: { eyebrow: 'Conversion banner', fields: [['eyebrow', 'Overline'], ['title', 'Headline'], ['accent', 'Emphasised headline'], ['description', 'Description', 'textarea'], ['primaryLabel', 'Primary button label'], ['primaryLink', 'Primary destination'], ['secondaryLabel', 'Secondary button label'], ['secondaryLink', 'Secondary destination']] }
@@ -34,10 +34,10 @@ function ContentField({ field, label, type = 'text', value, onChange, upload }) 
     finally { setUploading(false); event.target.value = ''; }
   }
   const isMedia = type === 'image' || type === 'video' || type === 'media';
-  return <label className="home-builder-field">
+  return <div className="home-builder-field">
     <span>{label}</span>
-    {type === 'textarea' ? <textarea rows="3" value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
-      : <input type={type === 'number' ? 'number' : 'text'} min={type === 'number' ? 0 : undefined} value={value ?? ''} onChange={(e) => onChange(type === 'number' ? Number(e.target.value) : e.target.value)} />}
+    {type === 'textarea' ? <textarea aria-label={label} rows="3" value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+      : <input aria-label={label} type={type === 'number' ? 'number' : 'text'} min={type === 'number' ? 0 : undefined} value={value ?? ''} onChange={(e) => onChange(type === 'number' ? Number(e.target.value) : e.target.value)} />}
     {isMedia && <>
       <span className="home-builder-upload-line">
         <label className="home-builder-upload"> {uploading ? 'Uploading…' : 'Upload ' + (type === 'video' ? 'video' : type === 'image' ? 'image' : 'image / video')}
@@ -50,7 +50,7 @@ function ContentField({ field, label, type = 'text', value, onChange, upload }) 
           ? <video src={assetUrl(value)} controls muted playsInline /> : <img src={assetUrl(value)} alt="Media preview" loading="lazy" />}
       </span>}
     </>}
-  </label>;
+  </div>;
 }
 function listItem(template, kind) {
   if (kind === 'hero') return { ...DEFAULT_HOME.sections.hero.slides[0], id: homeId(), mediaUrl: '', title: 'New hero slide', accent: '', description: '' };
@@ -114,12 +114,15 @@ export default function HomeBuilderPage() {
   }
   async function preview() {
     setBusy('preview');
+    const previewWindow = window.open('about:blank', '_blank');
+    if (previewWindow) previewWindow.opener = null;
     try {
       const result = await api('/admin/home-builder/draft', { method: 'PUT', body: { content } });
       setSavedDraft(normalizeHome(result.draft));
-      window.open('/?home_preview=1', '_blank', 'noopener,noreferrer');
+      if (previewWindow) previewWindow.location.href = '/?home_preview=1';
+      else window.location.assign('/?home_preview=1');
       setNotice('Preview uses your saved draft, not the live page.');
-    } catch (error) { setNotice(error.message); }
+    } catch (error) { if (previewWindow) previewWindow.close(); setNotice(error.message); }
     finally { setBusy(''); }
   }
   const list = repeatProps[selected];
