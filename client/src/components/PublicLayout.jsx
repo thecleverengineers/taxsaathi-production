@@ -4,6 +4,87 @@ import { api, assetUrl } from '../lib/api';
 import { useAuth } from './AuthContext';
 import Icon from './Icons';
 
+function PublicAccountMenu({ user, logout, ordersPath, closeMenus }) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
+  const triggerRef = useRef(null);
+  const location = useLocation();
+  const displayName = String(user?.name || user?.full_name || 'My account').trim() || 'My account';
+  const profileImage = user?.avatar_url || user?.profile_image_url || user?.profile_photo_url || '';
+  const closeAccountMenu = () => setOpen(false);
+
+  useEffect(() => { setOpen(false); }, [location.pathname, location.search, user?.id]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function dismissOutside(event) {
+      if (!menuRef.current?.contains(event.target)) setOpen(false);
+    }
+    function dismissKeyboard(event) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+    document.addEventListener('pointerdown', dismissOutside);
+    document.addEventListener('keydown', dismissKeyboard);
+    return () => {
+      document.removeEventListener('pointerdown', dismissOutside);
+      document.removeEventListener('keydown', dismissKeyboard);
+    };
+  }, [open]);
+
+  function handleSignOut() {
+    closeAccountMenu();
+    closeMenus();
+    void logout();
+  }
+
+  return (
+    <div className="public-account-wrap" ref={menuRef}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="public-account-trigger"
+        aria-label={`Account menu for ${displayName}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls="public-account-dropdown"
+        onClick={() => { closeMenus(); setOpen((current) => !current); }}
+      >
+        <span className="public-account-avatar" aria-hidden="true">
+          {profileImage
+            ? <img src={assetUrl(profileImage)} alt="" />
+            : <Icon name="user" size={18} />}
+        </span>
+        <span className="public-account-name" title={displayName}>{displayName}</span>
+        <Icon name="chevronDown" size={15} className={open ? 'public-account-chevron is-open' : 'public-account-chevron'} aria-hidden="true" />
+      </button>
+      {open && (
+        <div id="public-account-dropdown" className="public-account-dropdown" role="menu" aria-label="Account options">
+          <div className="public-account-dropdown-head">
+            <strong>{displayName}</strong>
+            <small>{user?.email || user?.role?.name || 'Tax Saathi account'}</small>
+          </div>
+          <Link to="/dashboard" role="menuitem" onClick={closeAccountMenu}>
+            <Icon name="dashboard" size={17} /> My workspace
+          </Link>
+          <Link to={ordersPath} role="menuitem" onClick={closeAccountMenu}>
+            <Icon name="orders" size={17} /> My orders
+          </Link>
+          <Link to="/profile" role="menuitem" onClick={closeAccountMenu}>
+            <Icon name="settings" size={17} /> Profile & settings
+          </Link>
+          <div className="public-account-dropdown-divider" role="separator" />
+          <button type="button" role="menuitem" className="public-account-signout" onClick={handleSignOut}>
+            <Icon name="logout" size={17} /> Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PublicLayout() {
   const { user, logout } = useAuth();
   const [site, setSite] = useState({ site_name: 'TaxSaathi', site_logo: '/uploads/site/site_logo_20260605161136_36ef8081dd8a.png' });
@@ -139,9 +220,14 @@ export default function PublicLayout() {
             </div>
             <NavLink to="/about" className={navClass} onClick={closeMenus}>About</NavLink>
             <NavLink to="/contact" className={navClass} onClick={closeMenus}>Contact</NavLink>
-            {user ? <Link to="/dashboard" className="public-nav-link" onClick={closeMenus}>Workspace</Link> : <NavLink to="/auth" className={navClass} onClick={closeMenus}>Login</NavLink>}
+            {user && <Link to="/dashboard" className="public-nav-link" onClick={closeMenus}>Workspace</Link>}
           </nav>
-          {user ? <button className="nav-cta" onClick={logout}><Icon name="logout" size={16} /> Sign out</button> : <Link to="/auth" className="nav-cta">Get started <Icon name="arrow" size={16} /></Link>}
+          {user
+            ? <PublicAccountMenu user={user} logout={logout} ordersPath={ordersPath} closeMenus={closeMenus} />
+            : <Link to="/auth" className="public-login-trigger" aria-label="Login to Tax Saathi" onClick={closeMenus}>
+                <Icon name="userCircle" size={19} aria-hidden="true" />
+                <span>Login</span>
+              </Link>}
         </div>
       </header>
 

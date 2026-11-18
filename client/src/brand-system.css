@@ -494,3 +494,201 @@ body {font-family:var(--ts-font);color:var(--ink);background:var(--surface-soft)
     letter-spacing: 0;
   }
 }
+
+
+/* Public header: authenticated user control and guest login icon.
+   Shared across the home, service catalogue, information and checkout pages. */
+.public-site.ts-brand-site .public-nav .brand-mark-link {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.public-site.ts-brand-site .public-nav .public-login-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 10px 17px;
+  border: 1px solid #eac36b;
+  border-radius: 999px;
+  background: linear-gradient(112deg, #be862a, #f8d985 49%, #d09a39);
+  box-shadow: 0 7px 20px #06162f36;
+  color: #0c2548;
+  font-family: var(--ts-font);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.public-site.ts-brand-site .public-nav .public-login-trigger:hover {
+  background: linear-gradient(112deg, #d19b40, #ffe3a2, #dca347);
+  color: #071b35;
+}
+.public-site.ts-brand-site .public-nav .public-login-trigger svg {
+  flex: 0 0 auto;
+  display: block;
+}
+.public-site.ts-brand-site .public-account-wrap {
+  flex: 0 1 auto;
+  min-width: 0;
+  position: relative;
+  z-index: 35;
+}
+.public-site.ts-brand-site .public-account-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-width: 0;
+  min-height: 44px;
+  max-width: 220px;
+  padding: 4px 11px 4px 5px;
+  border: 1px solid #e6bf7370;
+  border-radius: 999px;
+  background: #ffffff12;
+  color: #fff3d8;
+  font-family: var(--ts-font);
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease;
+}
+.public-site.ts-brand-site .public-account-trigger:hover,
+.public-site.ts-brand-site .public-account-trigger[aria-expanded="true"] {
+  background: #ffffff23;
+  border-color: #e9c778;
+}
+.public-site.ts-brand-site .public-account-avatar {
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e4bf6f;
+  border-radius: 50%;
+  color: #0b2a4f;
+  background: linear-gradient(130deg, #f8e4a7, #cc973e);
+}
+.public-site.ts-brand-site .public-account-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.public-site.ts-brand-site .public-account-name {
+  display: block;
+  max-width: 135px;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff4df;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.public-site.ts-brand-site .public-account-chevron {
+  flex: 0 0 auto;
+  color: #f4d388;
+  transition: transform .2s ease;
+}
+.public-site.ts-brand-site .public-account-chevron.is-open {transform: rotate(180deg)}
+.public-site.ts-brand-site .public-account-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 65;
+  width: min(270px, calc(100vw - 25px));
+  padding: 7px;
+  border: 1px solid #dac49f;
+  border-radius: 17px;
+  color: #102e55;
+  background: #fffefa;
+  box-shadow: 0 20px 45px #08162945;
+}
+.public-site.ts-brand-site .public-account-dropdown-head {
+  margin: 0 0 5px;
+  padding: 12px 11px 13px;
+  border-bottom: 1px solid #e9e2d6;
+}
+.public-site.ts-brand-site .public-account-dropdown-head strong {
+  display: block;
+  overflow: hidden;
+  color: #102e55;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.public-site.ts-brand-site .public-account-dropdown-head small {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: #63738b;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.public-site.ts-brand-site .public-account-dropdown a,
+.public-site.ts-brand-site .public-account-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 43px;
+  padding: 10px 11px;
+  border: 0;
+  border-radius: 10px;
+  color: #1a385e;
+  background: transparent;
+  font-family: var(--ts-font);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.public-site.ts-brand-site .public-account-dropdown a:hover,
+.public-site.ts-brand-site .public-account-dropdown button:hover {
+  color: #8d5f1c;
+  background: #fbf1db;
+}
+.public-site.ts-brand-site .public-account-dropdown a svg,
+.public-site.ts-brand-site .public-account-dropdown button svg {
+  flex: 0 0 auto;
+  color: #aa7c2e;
+}
+.public-site.ts-brand-site .public-account-dropdown-divider {
+  height: 1px;
+  margin: 6px 5px;
+  background: #e6e0d5;
+}
+.public-site.ts-brand-site .public-account-dropdown button.public-account-signout {
+  color: #ad3440;
+}
+.public-site.ts-brand-site .public-account-dropdown button.public-account-signout svg {
+  color: #ad3440;
+}
+.public-site.ts-brand-site .public-account-trigger:focus-visible,
+.public-site.ts-brand-site .public-login-trigger:focus-visible,
+.public-site.ts-brand-site .public-account-dropdown :is(a,button):focus-visible {
+  outline: 3px solid #f1ce7a;
+  outline-offset: 3px;
+}
+@media (max-width: 760px) {
+  .public-site.ts-brand-site .public-nav .public-login-trigger {min-height: 40px; padding: 9px 12px}
+  .public-site.ts-brand-site .public-account-trigger {gap: 6px; max-width: 180px; padding: 4px 8px 4px 5px}
+  .public-site.ts-brand-site .public-account-name {max-width: 106px}
+}
+@media (max-width: 540px) {
+  .public-site.ts-brand-site .public-nav .public-login-trigger {min-height: 38px; padding: 8px 11px; font-size: 11px}
+  .public-site.ts-brand-site .public-account-trigger {min-height: 39px; gap: 5px; padding: 3px 6px 3px 3px}
+  .public-site.ts-brand-site .public-account-avatar {flex-basis: 31px; width: 31px; height: 31px}
+  .public-site.ts-brand-site .public-account-name {max-width: 74px; font-size: 10px}
+  .public-site.ts-brand-site .public-account-chevron {width: 12px; height: 12px}
+}
+@media (max-width: 380px) {
+  .public-site.ts-brand-site .public-nav .public-login-trigger {gap: 5px; padding: 7px 9px}
+  .public-site.ts-brand-site .public-account-name {max-width: 54px; font-size: 9px}
+  .public-site.ts-brand-site .public-account-avatar {flex-basis: 28px; width: 28px; height: 28px}
+  .public-site.ts-brand-site .public-account-trigger {gap: 4px; padding-inline: 3px}
+}
