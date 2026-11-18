@@ -40,6 +40,7 @@ import { recordAudit } from '../lib/audit.mjs';
 import { permissionCatalogRows } from '../lib/rbac.mjs';
 import { dispatchWebPushNotifications, getVapidPublicKey, isTrustedPushEndpoint, isWebPushConfigured, normalizeWebPushSubscription } from '../lib/web-push.mjs';
 import workflowRouter from './workflow.mjs';
+import { resolveOrderPaymentChoice } from '../lib/order-payment.mjs';
 
 const router = express.Router();
 const otpStore = new Map();
@@ -1035,7 +1036,13 @@ router.post('/orders', ...roleGuard(request => request.app.locals.store, 'admin'
   }
   if (!isPartnerSubmission && !clientId) return responseError(response, 'A client profile is required before placing an order.');
   const fee = asNumber(service.filing_fee);
-  const paymentFirst = submittingRole === 'client' && fee > 0;
+  let paymentChoice;
+  try {
+    paymentChoice = resolveOrderPaymentChoice(request.body.payment_choice, fee, submittingRole);
+  } catch (error) {
+    return responseError(response, error.message, 422);
+  }
+  const paymentFirst = paymentChoice.payment_first;
   const idempotencyKey = String(request.body.idempotency_key || '').trim().slice(0, 100);
   if (idempotencyKey) {
     const existingOrder = await store.findOne('orders', { submitted_by_user_id: Number(request.auth.user.id), idempotency_key: idempotencyKey });
@@ -1066,9 +1073,10 @@ router.post('/orders', ...roleGuard(request => request.app.locals.store, 'admin'
     gross_fee_amount: fee,
     payable_amount: fee,
     coupon_discount_amount: 0,
-    status: paymentFirst ? 'awaiting_payment' : 'submitted',
-    payment_method: 'upi',
-    payment_status: paymentFirst ? 'unpaid' : 'not_due',
+    status: paymentChoice.status,
+    payment_choice: paymentChoice.payment_choice,
+    payment_method: paymentChoice.payment_method,
+    payment_status: paymentChoice.payment_status,
     payment_first: paymentFirst,
     idempotency_key: idempotencyKey || null,
     notes,
@@ -1079,9 +1087,20 @@ router.post('/orders', ...roleGuard(request => request.app.locals.store, 'admin'
     created_at: isoNow(),
     updated_at: isoNow()
   });
-  await store.insert('activity_logs', { user_id: request.auth.user.id, order_id: order.id, action: 'order.created', description: `Created order ${order.order_no}`, meta_json: '{}', created_at: isoNow() });
+  if (paymentChoice.payment_status === 'deferred') {
+    // Pay Later is not paid: keep an unpaid invoice for follow-up and accounting.
+    await store.insert('invoices', {
+      order_id: order.id, client_id: order.client_id || null, partner_id: order.partner_id || null,
+      invoice_no: `INV-${String(order.id).padStart(5, '0')}`,
+      issue_date: isoNow().slice(0, 10), subtotal: fee, tax_percent: 0, tax_amount: 0,
+      total_amount: fee, paid_amount: 0, status: 'unpaid',
+      notes: 'Customer selected Pay Later when submitting the job.',
+      created_at: isoNow(), updated_at: isoNow()
+    });
+  }
+  await store.insert('activity_logs', { user_id: request.auth.user.id, order_id: order.id, action: 'order.created', description: `Created order ${order.order_no}`, meta_json: JSON.stringify({ payment_choice: paymentChoice.payment_choice }), created_at: isoNow() });
   const submitterUrl = isPartnerSubmission ? `/partner/jobs/${order.id}` : `/client/orders/${order.id}`;
-  await notify(store, { userId: request.auth.user.id, title: paymentFirst ? 'Payment required' : 'Job submitted', message: paymentFirst ? `${order.order_no} requires verified payment before work begins.` : `${order.order_no} has been submitted for assignment.`, severity: 'success', url: submitterUrl, orderId: order.id });
+  await notify(store, { userId: request.auth.user.id, title: paymentFirst ? 'Payment required' : 'Job submitted', message: paymentFirst ? `${order.order_no} requires verified UPI payment before work begins.` : paymentChoice.payment_status === 'deferred' ? `${order.order_no} was submitted with Pay Later selected. Payment remains outstanding.` : `${order.order_no} has been submitted for assignment.`, severity: 'success', url: submitterUrl, orderId: order.id });
   response.status(201).json({ ok: true, order: await resolveOrder(store, order, request.auth) });
 }));
 
@@ -1179,6 +1198,14 @@ router.post('/orders/:id/coupon', ...roleGuard(request => request.app.locals.sto
     payable_amount: result.payable,
     updated_at: isoNow()
   });
+  if (String(order.payment_status || '').toLowerCase() === 'deferred') {
+    const deferredInvoice = await store.findOne('invoices', { order_id: Number(order.id) });
+    if (deferredInvoice) {
+      await store.update('invoices', { id: Number(deferredInvoice.id) }, {
+        subtotal: result.payable, total_amount: result.payable, updated_at: isoNow()
+      });
+    }
+  }
   await store.insert('coupon_redemptions', {
     coupon_id: result.coupon.id,
     coupon_code: result.coupon.code,
