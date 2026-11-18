@@ -1043,16 +1043,16 @@ router.post('/orders', ...roleGuard(request => request.app.locals.store, 'admin'
     return responseError(response, error.message, 422);
   }
   const paymentFirst = paymentChoice.payment_first;
+  const idempotencyKey = String(request.body.idempotency_key || '').trim().slice(0, 100);
+  if (idempotencyKey) {
+    const existingOrder = await store.findOne('orders', { submitted_by_user_id: Number(request.auth.user.id), idempotency_key: idempotencyKey });
+    if (existingOrder) return response.json({ ok: true, order: await resolveOrder(store, existingOrder, request.auth), duplicate: true });
+  }
   if (paymentFirst) {
     const configured = paymentDetails(await settingsMap(store));
     if (!configured.upi_id && !configured.qr_code && !configured.razorpay_enabled) {
       return responseError(response, 'UPI payments are not configured yet. Choose Pay Later, or contact support.', 422);
     }
-  }
-  const idempotencyKey = String(request.body.idempotency_key || '').trim().slice(0, 100);
-  if (idempotencyKey) {
-    const existingOrder = await store.findOne('orders', { submitted_by_user_id: Number(request.auth.user.id), idempotency_key: idempotencyKey });
-    if (existingOrder) return response.json({ ok: true, order: await resolveOrder(store, existingOrder, request.auth), duplicate: true });
   }
   const customerName = String(request.body.customer_name || request.auth.user.name || '').trim();
   const customerPan = String(request.body.pan_number || '').trim().toUpperCase();
