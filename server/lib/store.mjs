@@ -157,6 +157,8 @@ export class DataStore {
         { key: { status: 1, payment_status: 1 }, name: 'orders_workflow_status' }
       ],
       order_documents: [{ key: { order_id: 1, id: -1 }, name: 'order_documents_order_recent' }],
+      partner_order_messages: [{ key: { partner_order_id: 1, id: 1 }, name: 'partner_order_messages_order' }],
+      corporate_compliance_events: [{ key: { client_id: 1, due_date: 1 }, name: 'corporate_compliance_events_client_due' }],
       payments: [{ key: { order_id: 1, status: 1, id: -1 }, name: 'payments_order_status' }],
       invoices: [{ key: { order_id: 1 }, name: 'invoices_order' }],
       notifications: [{ key: { user_id: 1, id: -1 }, name: 'notifications_user_recent' }],
