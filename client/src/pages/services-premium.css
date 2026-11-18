@@ -218,3 +218,8 @@
   .ts-services-footer-inner{align-items:flex-start;flex-direction:column}
   .ts-services-footer-inner>.ts-services-primary{width:100%;white-space:normal}
 }
+
+.ts-services-controls.is-single{display:flex;flex:1 1 auto;justify-content:flex-end}
+.ts-services-controls.is-single>*{flex:1 1 230px;max-width:360px}
+.ts-services-controls.is-single .ts-services-search input{width:100%}
+@media(max-width:680px){.ts-services-controls.is-single{display:flex;justify-content:stretch}.ts-services-controls.is-single>*{max-width:none;width:100%}}
