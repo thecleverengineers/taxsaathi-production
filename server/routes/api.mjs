@@ -33,7 +33,7 @@ import {
   statusLabel,
   timeAgo
 } from '../lib/legacy.mjs';
-import { saveUpload, streamStoredFile } from '../lib/file-store.mjs';
+import { saveUpload, streamStoredFile, deleteStoredFile } from '../lib/file-store.mjs';
 import { rateLimit } from '../lib/rate-limit.mjs';
 import { runWorkflowReminders } from '../lib/workflow.mjs';
 import { recordAudit } from '../lib/audit.mjs';
@@ -203,7 +203,9 @@ async function currentUserResponse(store, user) {
     if (role) roles.push(role);
   }
   const role = roles.find((item) => Number(item.id) === Number(user.role_id)) || roles[0] || null;
-  return publicUser(user, role, roles);
+  const client = user.client_id ? await store.findOne('clients', { id: Number(user.client_id) }) : null;
+  return { ...publicUser(user, role, roles), avatar_url: user.avatar_stored_name ? '/api/auth/avatar' : null,
+    client_type: client?.client_type || null, company_name: client?.company_name || null };
 }
 
 function responseError(response, message, status = 400) {
@@ -981,6 +983,115 @@ router.get('/auth/me', authRequired((request) => request.app.locals.store), asyn
   response.json({ ok: true, user: await currentUserResponse(store, request.auth.user) });
 }));
 
+
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (_request, file, callback) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'].includes(String(file.mimetype || '').toLowerCase());
+    callback(allowed ? null : new Error('Profile photo must be a JPG, PNG or WebP image.'), allowed);
+  },
+  limits: { fileSize: 3 * 1024 * 1024, files: 1 }
+});
+
+router.get('/auth/avatar', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
+  const user = request.auth.user;
+  if (!user.avatar_stored_name) return responseError(response, 'Profile photo not found.', 404);
+  response.setHeader('Cache-Control', 'private, no-store');
+  response.setHeader('X-Content-Type-Options', 'nosniff');
+  const sent = await streamStoredFile(request.app.locals.store, user.avatar_stored_name, response, {
+    localFolder: 'documents', downloadName: 'tax-saathi-profile-image'
+  });
+  if (!sent) return responseError(response, 'Profile photo not found.', 404);
+}));
+
+router.post('/auth/avatar', authRequired((request) => request.app.locals.store), avatarUpload.single('file'), asyncRoute(async (request, response) => {
+  if (!request.file) return responseError(response, 'Select a JPG, PNG or WebP profile photo.', 422);
+  const store = request.app.locals.store;
+  const allowed = {
+    'image/jpeg': [0xff, 0xd8, 0xff],
+    'image/png': [0x89, 0x50, 0x4e, 0x47],
+    'image/webp': [0x52, 0x49, 0x46, 0x46]
+  };
+  const magic = allowed[request.file.mimetype];
+  if (!magic || !magic.every((value, index) => request.file.buffer[index] === value)) {
+    return responseError(response, 'The file does not match the selected image type.', 422);
+  }
+  const old = String(request.auth.user.avatar_stored_name || '');
+  const saved = await saveUpload(store, request.file, {
+    folder: 'documents', metadata: { kind: 'profile-avatar', user_id: request.auth.user.id }
+  });
+  const updated = await store.update('users', { id: Number(request.auth.user.id) }, {
+    avatar_stored_name: saved.stored_name, avatar_file_id: saved.file_id,
+    updated_at: isoNow()
+  });
+  if (old && old !== saved.stored_name) await deleteStoredFile(store, old).catch(() => {});
+  await recordAudit(store, request, { action: 'user.avatar.updated', resourceType: 'user', resourceId: request.auth.user.id });
+  response.json({ ok: true, user: await currentUserResponse(store, updated) });
+}));
+
+router.delete('/auth/avatar', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const old = String(request.auth.user.avatar_stored_name || '');
+  await store.update('users', { id: Number(request.auth.user.id) }, {
+    avatar_stored_name: null, avatar_file_id: null, updated_at: isoNow()
+  });
+  if (old) await deleteStoredFile(store, old).catch(() => {});
+  await recordAudit(store, request, { action: 'user.avatar.removed', resourceType: 'user', resourceId: request.auth.user.id });
+  response.json({ ok: true, user: await currentUserResponse(store, await store.findOne('users', { id: Number(request.auth.user.id) })) });
+}));
+
+/* Search only orders already visible to the signed-in user. Never query global records outside their scope. */
+router.get('/workspace/search', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
+  const search = String(request.query.q || '').trim().toLowerCase().slice(0, 90);
+  if (search.length < 2) return response.json({ ok: true, orders: [], truncated: false });
+  const filter = allowedOrderFilter(request.auth);
+  const recent = await request.app.locals.store.find('orders', filter, { sort: { id: -1 }, limit: 250 });
+  const matching = recent.filter(row => [row.order_no, row.customer_name, row.customer_email, row.pan_number, row.status]
+    .filter(Boolean).join(' ').toLowerCase().includes(search));
+  response.json({ ok: true, orders: matching.slice(0, 12).map(row => ({
+    id: row.id, order_no: row.order_no, customer_name: row.customer_name || '', status: row.status,
+    created_at: row.created_at
+  })), truncated: matching.length > 12 || recent.length === 250 });
+}));
+
+router.get('/corporate/overview', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  if (roleSlug(request.auth) !== 'client' || !request.auth.user.client_id) return responseError(response, 'Corporate client access required.', 403);
+  const client = await store.findOne('clients', { id: Number(request.auth.user.client_id) });
+  if (!client || String(client.client_type).toLowerCase() !== 'corporate') return responseError(response, 'This account is not a Corporate client.', 403);
+  const orders = await store.find('orders', { client_id: Number(client.id) }, { sort: { id: -1 }, limit: 250 });
+  const outstanding = orders.filter(row => !['verified','paid','approved'].includes(String(row.payment_status||'').toLowerCase()));
+  const deadlines = orders.filter(row => row.due_date && !['completed','closed','cancelled'].includes(String(row.status||'').toLowerCase()))
+    .map(row => ({ id: row.id, order_no: row.order_no, due_date: row.due_date, status: row.status }))
+    .sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date))).slice(0, 12);
+  response.json({ ok: true, company: { id: client.id, name: client.name, company_name: client.company_name,
+    contact_person: client.contact_person, email: client.email, phone: client.phone, client_type: 'corporate' },
+    summary: { total_orders: orders.length, open_orders: orders.filter(row => !['completed','closed','cancelled'].includes(String(row.status||'').toLowerCase())).length,
+      outstanding_payments: outstanding.length, completed_orders: orders.filter(row => ['completed','closed'].includes(String(row.status||'').toLowerCase())).length },
+    deadlines, orders: orders.slice(0, 25).map(row => ({
+      id: row.id, order_no: row.order_no, status: row.status, payment_status: row.payment_status,
+      fee_amount: row.fee_amount, due_date: row.due_date, created_at: row.created_at
+    })), truncated: orders.length >= 250 });
+}));
+
+router.patch('/corporate/company', authRequired((request) => request.app.locals.store), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  if (roleSlug(request.auth) !== 'client' || !request.auth.user.client_id) return responseError(response, 'Corporate client access required.', 403);
+  const client = await store.findOne('clients', { id: Number(request.auth.user.client_id) });
+  if (!client || String(client.client_type).toLowerCase() !== 'corporate') return responseError(response, 'This account is not a Corporate client.', 403);
+  const companyName = String(request.body.company_name || '').trim().slice(0, 150);
+  const contactPerson = String(request.body.contact_person || '').trim().slice(0, 120);
+  if (!companyName) return responseError(response, 'Company name is required.', 422);
+  const updated = await store.update('clients', { id: Number(client.id) }, {
+    company_name: companyName, contact_person: contactPerson, updated_at: isoNow()
+  });
+  await recordAudit(store, request, { action: 'corporate.profile.updated', resourceType: 'client', resourceId: client.id });
+  response.json({ ok: true, company: {
+    id: updated.id, company_name: updated.company_name, contact_person: updated.contact_person,
+    name: updated.name, email: updated.email, phone: updated.phone
+  }});
+}));
+
 router.post('/auth/logout', asyncRoute(async (request, response) => {
   clearTokenCookie(response);
   response.json({ ok: true });
@@ -1582,6 +1693,35 @@ router.get('/partner/orders', ...roleGuard(request => request.app.locals.store, 
   const services = await store.find('services', {});
   const servicesById = new Map(services.map((service) => [Number(service.id), service]));
   response.json({ ok: true, orders: rows.map((row) => ({ ...row, service: servicesById.get(Number(row.service_id)) || null })) });
+}));
+
+
+router.get('/partner/orders/:id/messages', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'partner', 'partners'), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const filter = isGlobalRole(request.auth) ? {} : partnerOwnerFilter(request.auth);
+  const order = await store.findOne('partner_orders', { id: Number(request.params.id), ...filter });
+  if (!order) return responseError(response, 'Partner order not found or access denied.', 404);
+  const messages = await store.find('partner_order_messages', { partner_order_id: Number(order.id) }, { sort: { id: 1 }, limit: 250 });
+  response.json({ ok: true, messages });
+}));
+
+router.post('/partner/orders/:id/messages', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'partner', 'partners'), asyncRoute(async (request, response) => {
+  const store = request.app.locals.store;
+  const filter = isGlobalRole(request.auth) ? {} : partnerOwnerFilter(request.auth);
+  const order = await store.findOne('partner_orders', { id: Number(request.params.id), ...filter });
+  if (!order) return responseError(response, 'Partner order not found or access denied.', 404);
+  const messageText = String(request.body.message || '').trim();
+  if (!messageText || messageText.length > 3000) return responseError(response, 'Write a message up to 3,000 characters.', 422);
+  const message = await store.insert('partner_order_messages', {
+    partner_order_id: Number(order.id), sender_user_id: Number(request.auth.user.id),
+    sender_name: String(request.auth.user.name || 'Tax Saathi'), sender_role: roleSlug(request.auth),
+    message: messageText, created_at: isoNow()
+  });
+  if (order.assigned_user_id && Number(order.assigned_user_id) !== Number(request.auth.user.id)) {
+    await notify(store, { userId: Number(order.assigned_user_id), title: 'Partner order message',
+      message: messageText.slice(0, 160), severity: 'info', url: '/partner/orders/' + order.id });
+  }
+  response.status(201).json({ ok: true, message });
 }));
 
 router.get('/partner/orders/:id', ...roleGuard(request => request.app.locals.store, 'admin', 'manager', 'partners', 'partner'), asyncRoute(async (request, response) => {
