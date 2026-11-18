@@ -38,10 +38,12 @@ export async function api(path, options = {}) {
     const contentType = response.headers.get('content-type') || '';
     const payload = contentType.includes('application/json') ? await response.json() : await response.text();
     if (!response.ok || (payload && payload.ok === false)) {
-      throw new Error(
+      const error = new Error(
         (typeof payload === 'object' && payload?.message)
           || `Server returned HTTP ${response.status}. Please retry or contact support.`
       );
+      error.status = response.status;
+      throw error;
     }
     if (typeof payload === 'string' && payload.trim().startsWith('<!DOCTYPE html')) {
       throw new Error('The API returned a website page instead of data. Please contact support to check the server routing.');

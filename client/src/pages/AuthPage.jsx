@@ -96,7 +96,7 @@ export default function AuthPage() {
     setBusy(true);
     feedback('');
     try {
-      await login({ email, password });
+      await login({ email, password }, (attempt, total) => feedback(`Reconnecting to the sign-in service (${attempt}/${total})…`, 'success'));
       navigate(destination, { replace: true });
     } catch (error) {
       feedback(error.message || 'Unable to sign in right now.');
