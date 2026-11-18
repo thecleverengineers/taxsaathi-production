@@ -16,6 +16,7 @@ export const DEFAULT_HOME = {
   sections: {
     hero: {
       enabled: true, autoplayMs: 7200, brandBadge: true,
+      assuranceOne: 'Secure records', assuranceTwo: 'Guided process', assuranceThree: 'Human support',
       slides: [
         slide('TAX · GST · COMPLIANCE', 'Your Taxes, Our Priority.', 'Your Peace of Mind.', 'Simplify tax filing and compliance with expert guidance you can trust.', 'Relaxed Tax Saathi customer working from home'),
         slide('PERSONALISED TAX SUPPORT', 'Expert Guidance.', 'A Personal Touch.', 'From everyday tax needs to business compliance, we are here to make things easier.', 'Friendly advisor consultation'),
@@ -48,6 +49,9 @@ export const DEFAULT_HOME = {
     workflow: { enabled: true, eyebrow: 'HOW IT WORKS', title: 'From request to result,', accent: 'clearly.',
       description: 'Find the right service and manage the stages of your application in one place.',
       ctaLabel: 'Explore our services', ctaLink: '/services',
+      illustrationTitle: 'Service application', illustrationDescription: 'All stages, one clear view',
+      illustrationStageOne: 'Submitted', illustrationStageTwo: 'In review', illustrationStageThree: 'Deliverable',
+      illustrationFooter: 'Secure document handling', illustrationFloatOne: 'Track each update', illustrationFloatTwo: 'Files in one place',
       steps: [
         { id: 'step-1', title: 'Choose the right service', description: 'Review the scope, requirements, and available pricing.' },
         { id: 'step-2', title: 'Share details securely', description: 'Submit your application and required documents.' },
