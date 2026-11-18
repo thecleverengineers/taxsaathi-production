@@ -1,0 +1,170 @@
+/* Tax Saathi lifestyle image carousel: one shared, locally hosted five-panel AVIF sprite. */
+.ts-home .ts-image-hero {
+  --hero-deep: #0b284e;
+  --hero-gold: #c99438;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--hero-deep);
+  background: linear-gradient(112deg, #fffaf2 2%, #f8f0e3 60%, #f5ebdb);
+}
+.ts-home .ts-image-hero::before {
+  content: "";
+  position: absolute;
+  inset: auto -12% -66% 33%;
+  height: 86%;
+  background: radial-gradient(ellipse, rgba(205,157,74,.17), transparent 64%);
+  pointer-events: none;
+}
+.ts-image-hero-shell {
+  display: grid;
+  grid-template-columns: minmax(0,.92fr) minmax(0,1.08fr);
+  grid-template-areas: "copy media";
+  align-items: center;
+  gap: clamp(26px, 4.8vw, 78px);
+  min-height: clamp(525px, 41vw, 660px);
+  padding-top: clamp(42px, 5vw, 72px);
+  padding-bottom: clamp(42px, 5vw, 72px);
+}
+.ts-image-hero-media {
+  grid-area: media;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1672 / 941;
+  overflow: hidden;
+  border-radius: clamp(18px, 2.1vw, 32px);
+  background: #f3e6d5;
+  box-shadow: 0 30px 65px rgba(15,39,69,.16), 0 0 0 1px rgba(174,124,50,.22);
+}
+.ts-image-hero-photo {
+  position:absolute;
+  inset:0;
+  background-image:url('/media/taxsaathi-hero-collection.avif');
+  background-repeat:no-repeat;
+  background-size:500% 100%;
+  opacity:0;
+  transition:opacity .75s ease;
+  will-change:opacity;
+}
+.ts-image-hero-photo.is-active{opacity:1}
+.ts-image-hero-media-brand {
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding: 9px 13px;
+  border:1px solid rgba(252,236,194,.6);
+  border-radius:999px;
+  color:#fff4d5;
+  background:rgba(6,29,56,.78);
+  backdrop-filter:blur(10px);
+  font-size:10px;
+  font-weight:750;
+  letter-spacing:.08em;
+}
+.ts-image-hero-media-brand img{width:22px;height:22px;object-fit:contain;border-radius:50%}
+.ts-image-hero-copy { grid-area:copy;position:relative;z-index:1;max-width:670px }
+.ts-image-hero-label {
+  display: inline-flex; align-items:center;gap:8px;
+  margin-bottom:21px;
+  color:#a56a21;
+  font-size:11px;
+  font-weight:800;
+  line-height:1.5;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+.ts-image-hero-label::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--hero-gold);box-shadow:0 0 0 4px rgba(201,148,56,.16)}
+.ts-home .ts-image-hero h1 {
+  margin:0;
+  max-width:740px;
+  color:#0b2548;
+  font-family:'Open Sans',Arial,sans-serif;
+  font-size:clamp(38px,3.65vw,62px);
+  font-weight:850;
+  line-height:1.14;
+  letter-spacing:-.054em;
+}
+.ts-home .ts-image-hero h1 em{
+  display:block;
+  margin-top:4px;
+  font:italic 600 1.05em Georgia,serif;
+  color:#b88026;
+  letter-spacing:-.048em;
+}
+.ts-image-hero-description{max-width:520px;margin:25px 0 0;color:#53637a;font-size:clamp(13px,1.03vw,15px);line-height:1.9}
+.ts-image-hero-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:32px}
+.ts-image-hero-actions .ts-home-button{min-width:166px;justify-content:center}
+.ts-image-hero-actions .ts-home-button-gold{color:#0d284b}
+.ts-image-hero-actions .ts-home-button-ghost{color:#17365b;border-color:rgba(18,54,94,.22);background:rgba(255,255,255,.62)}
+.ts-image-hero-actions .ts-home-button-ghost:hover{background:#fff;color:#0d284b}
+.ts-image-hero-nav{display:flex;align-items:center;gap:10px;margin-top:30px}
+.ts-image-hero-arrow {
+  display:grid;place-items:center;
+  width:38px;height:38px;
+  border:1px solid #c5b18e;
+  border-radius:50%;
+  color:#183755;
+  background:rgba(255,255,255,.68);
+  cursor:pointer;
+  font-size:18px;
+  line-height:1;
+  transition:background .2s,border-color .2s,transform .2s;
+}
+.ts-image-hero-arrow:hover{background:#fff;border-color:#ac7b2a;transform:translateY(-1px)}
+.ts-image-hero-dots{display:flex;align-items:center;gap:8px;padding:0 4px}
+.ts-image-hero-dot{height:8px;width:8px;padding:0;border:0;border-radius:9px;background:#c7b9a0;cursor:pointer;transition:width .3s,background .3s}
+.ts-image-hero-dot.is-active{width:28px;background:#b5812b}
+.ts-image-hero-counter{margin-left:8px;color:#8b7b63;font-size:11px;font-weight:750;font-variant-numeric:tabular-nums}
+.ts-image-hero-assurances{display:flex;flex-wrap:wrap;gap:10px 20px;margin-top:27px;color:#6a7180;font-size:11px;font-weight:650}
+.ts-image-hero-assurances span{display:inline-flex;align-items:center;gap:7px}
+.ts-image-hero-assurances svg{color:#ad7b2b}
+@media(max-width:1100px){
+  .ts-image-hero-shell{gap:27px;min-height:500px}
+  .ts-home .ts-image-hero h1{font-size:clamp(34px,4.05vw,48px)}
+}
+@media(max-width:900px){
+  .ts-image-hero-shell{
+    grid-template-columns:minmax(0,1fr);
+    grid-template-areas:"media" "copy";
+    gap:25px;
+    min-height:0;
+    padding-top:26px;
+    padding-bottom:38px;
+    width:min(100%,760px);
+  }
+  .ts-image-hero-media{border-radius:21px}
+  .ts-image-hero-copy{padding:0 9px}
+  .ts-home .ts-image-hero h1{font-size:clamp(36px,6.3vw,57px)}
+  .ts-image-hero-description{margin-top:17px}
+  .ts-image-hero-nav{margin-top:23px}
+  .ts-image-hero-assurances{margin-top:24px}
+}
+@media(max-width:680px){
+  .ts-image-hero-shell{padding-top:16px;padding-bottom:28px;gap:20px}
+  .ts-image-hero-media{border-radius:15px;box-shadow:0 12px 25px rgba(15,39,69,.13)}
+  .ts-image-hero-media-brand{right:8px;bottom:8px;padding:5px 8px;font-size:8px}
+  .ts-image-hero-media-brand img{width:17px;height:17px}
+  .ts-image-hero-copy{padding:0 3px}
+  .ts-image-hero-label{font-size:9px;margin-bottom:10px}
+  .ts-home .ts-image-hero h1{font-size:clamp(31px,8.4vw,44px);line-height:1.15;letter-spacing:-.045em}
+  .ts-home .ts-image-hero h1 em{margin-top:3px}
+  .ts-image-hero-description{font-size:12px;line-height:1.7;margin-top:13px}
+  .ts-image-hero-actions{gap:9px;margin-top:19px}
+  .ts-image-hero-actions .ts-home-button{min-width:0;flex:1 1 calc(50% - 9px);padding:11px 9px;font-size:11px;min-height:44px}
+  .ts-image-hero-nav{margin-top:19px;gap:8px}
+  .ts-image-hero-arrow{width:34px;height:34px}
+  .ts-image-hero-dots{gap:7px}
+  .ts-image-hero-assurances{gap:7px 12px;font-size:9px;margin-top:20px}
+  .ts-image-hero-assurances svg{width:13px;height:13px}
+}
+@media(max-width:370px){
+  .ts-home .ts-image-hero h1{font-size:29px}
+  .ts-image-hero-description{font-size:11px}
+  .ts-image-hero-media-brand{font-size:7px}
+}
+@media(prefers-reduced-motion:reduce){
+  .ts-image-hero-photo,.ts-image-hero-arrow,.ts-image-hero-dot{transition:none}
+}
