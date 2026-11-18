@@ -131,6 +131,9 @@ export default function HomePage() {
               <Link to="/services" className="ts-home-button ts-home-button-gold">Explore Services <GoldArrow size={19} /></Link>
               <Link to="/auth" className="ts-home-button ts-home-button-ghost">My Workspace <GoldArrow size={18} /></Link>
             </div>
+            <a href="#taxsaathi-intro-video" className="ts-home-hero-video-link" aria-label="Watch the TaxSaathi introduction video">
+              <span aria-hidden="true">▶</span> Watch our 10-second film
+            </a>
             <div className="ts-home-hero-assurances">
               <span><Icon name="shield" size={17} /> Secure records</span>
               <span><Icon name="check" size={17} /> Guided process</span>
@@ -147,6 +150,42 @@ export default function HomePage() {
         <div><span className="ts-home-trust-icon"><Icon name="file" size={20} /></span><span><strong>Organised paperwork</strong><small>Keep information together</small></span></div>
         <div><span className="ts-home-trust-icon"><Icon name="activity" size={20} /></span><span><strong>Visible progress</strong><small>Follow each stage</small></span></div>
         <div><span className="ts-home-trust-icon"><Icon name="shield" size={20} /></span><span><strong>Protected access</strong><small>Role-aware workspaces</small></span></div>
+      </section>
+
+
+      <section className="ts-home-film" id="taxsaathi-intro-video" aria-labelledby="ts-home-film-title">
+        <div className="container-wide ts-home-film-layout">
+          <div className="ts-home-film-content">
+            <span className="ts-home-kicker ts-home-kicker-light">SEE TAX SAATHI IN ACTION</span>
+            <h2 id="ts-home-film-title">Filing made simple. <em>Life made easier.</em></h2>
+            <p>From tax-filing stress to expert support and a clearer path forward. Discover Tax Saathi in this short film.</p>
+            <div className="ts-home-film-cta">
+              <Link to="/services" className="ts-home-button ts-home-button-gold">Find your service <GoldArrow size={17} /></Link>
+              <span><Icon name="shield" size={16} /> Professional tax & compliance support</span>
+            </div>
+          </div>
+          <div className="ts-home-film-stage">
+            <div className="ts-home-film-frame">
+              <video
+                className="ts-home-film-video"
+                controls
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                aria-label="Tax Saathi promotional film about income tax return filing"
+              >
+                <source src="https://d2ol7oe51mr4n9.cloudfront.net/user_35jIl5jZWKG5RRMETOQUSKTvh7o/8a5c3b32-66b6-452d-acc9-b9253f1e7e1b.mp4" type="video/mp4" />
+                Your browser does not support video playback.
+              </video>
+            </div>
+            <div className="ts-home-film-footer">
+              <span><span aria-hidden="true">▶</span> WATCH THE TAX SAATHI FILM</span>
+              <span>00:10 · FULL HD · UNMUTE TO HEAR AUDIO</span>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="ts-home-section ts-home-services">
