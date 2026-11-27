@@ -187,15 +187,7 @@
 .ts-home-final-cta h2 em{font:italic 600 1em Georgia,serif;color:#f7d685}
 .ts-home-final-cta p{max-width:540px;margin:0;color:#d5dfe9;font-size:13px;line-height:1.8}
 .ts-home-cta-actions{margin-top:0;flex:0 0 auto}
-.ts-home-site .public-header{background:linear-gradient(135deg,#081c39,#102e57);border-bottom:1px solid #a4772c4d}
-.ts-home-site .public-nav{background:linear-gradient(120deg,#0c2850,#142f55 70%,#0b2449);border:1px solid #e3b75a59;box-shadow:0 14px 32px #06152d2b}
-.ts-home-site .brand-mark-link strong,.ts-home-site .public-nav-link{color:#f7edda}
-.ts-home-site .brand-mark-link small{color:#dccba6}
-.ts-home-site .brand-logo-frame{background:#081b39;border-color:#c69b52;border-radius:50%}
-.ts-home-site .brand-logo-frame img{padding:0;object-fit:contain}
-.ts-home-site .public-nav-link:hover,.ts-home-site .public-nav-link.active{color:#f6d27d;background:#e1ae4e1c}
-.ts-home-site .nav-cta{background:linear-gradient(110deg,#c48c31,#f6d57e);border-color:#d4ae62;color:#102a4f}
-.ts-home-site .public-sidebar-trigger{color:#f6d991;border-color:#be974f88;background:#ffffff12}
+/* Public header styling is shared from the design system. */
 .ts-home-site .public-footer{background:linear-gradient(120deg,#08182f,#0d2a53)}
 .ts-home-site .public-footer::before{background:radial-gradient(circle,#ad85283b,transparent 70%)}
 .ts-home-site .public-footer .footer-title{color:#f0d28b!important}
@@ -284,7 +276,6 @@
  .ts-home-final-cta h2{font-size:clamp(31px,9vw,46px)}
  .ts-home-final-cta p{font-size:12px}
  .ts-home-cta-actions{gap:10px}
- .ts-home-site .public-nav{background:#0c2850}
  .ts-home-site .nav-cta{min-width:0}
 }
 @media (max-width:380px){

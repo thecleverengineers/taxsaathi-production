@@ -30,7 +30,7 @@ export function ServiceCard({ service, contact = {}, presentation = {} }) {
   const callHref = phoneHref(contact.phone);
   const whatsapp = whatsappHref(contact.whatsapp || contact.phone, (service.title || 'This service') + ' - I would like to know more.');
   return <article className="service-card">
-    <Link to={'/services/' + service.slug} className="service-card-main">
+    <Link to={'/services/' + service.slug} className={'service-card-main' + (presentation.showImages !== false ? ' has-service-image' : '')}>
       {presentation.showImages !== false && <div className="service-card-icon">
         {icon ? <img src={assetUrl(icon)} alt="" loading="lazy" />
           : <span>{String(service.title || 'TS').split(/\s+/).slice(0, 2).map((part) => part[0]).join('')}</span>}

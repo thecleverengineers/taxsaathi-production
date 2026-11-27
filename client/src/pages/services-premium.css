@@ -6,44 +6,7 @@
 }
 .ts-services-site .ambient-orb { display: none; }
 
-.public-site.ts-services-site .public-header {
-  padding: 0;
-  background: #fff;
-  border-bottom: 1px solid var(--services-line);
-}
-.public-site.ts-services-site .public-nav {
-  min-height: 72px;
-  padding: 8px 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-.public-site.ts-services-site .public-nav .brand-mark-link strong,
-.public-site.ts-services-site .public-nav-link {
-  color: var(--services-ink);
-}
-.public-site.ts-services-site .public-nav .brand-mark-link small { color: #515b6b; }
-.public-site.ts-services-site .public-nav-link:hover,
-.public-site.ts-services-site .public-nav-link.active {
-  color: var(--services-ink);
-  background: #f6eddd;
-}
-.public-site.ts-services-site .public-nav .public-login-trigger,
-.public-site.ts-services-site .public-nav .public-login-trigger:hover {
-  border: 0;
-  border-radius: 8px;
-  background: var(--services-gold);
-  color: var(--services-ink);
-  box-shadow: none;
-}
-.public-site.ts-services-site .public-nav .public-sidebar-trigger {
-  order: 1;
-  border-color: transparent;
-  background: transparent;
-  color: var(--services-ink);
-}
-.public-site.ts-services-site .public-nav .public-sidebar-trigger:hover { background: #f6eddd; }
+/* Public navigation styling is shared by PublicLayout across all visitor pages. */
 
 .ts-services { color: var(--services-ink); background: var(--services-paper); }
 .ts-services-hero {
@@ -179,14 +142,9 @@
 
 @media (max-width: 960px) {
   .ts-services-category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .public-site.ts-services-site .public-nav .public-login-trigger {
-    width: 44px; min-height: 44px; padding: 0; background: transparent;
-  }
-  .public-site.ts-services-site .public-nav .public-login-trigger span { display: none; }
 }
 
 @media (max-width: 680px) {
-  .public-site.ts-services-site .public-nav { min-height: 61px; }
   .ts-services-hero-copy { width: 100%; padding: 31px 0; }
   .ts-services-hero-copy h1 { max-width: 520px; font-size: clamp(34px, 8vw, 49px); }
   .ts-services-hero-image { position: static; display: block; width: 100%; height: clamp(148px, 40vw, 245px); clip-path: none; }
