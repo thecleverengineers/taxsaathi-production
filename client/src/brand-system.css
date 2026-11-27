@@ -1036,3 +1036,83 @@ body {font-family:var(--ts-font);color:var(--ink);background:var(--surface-soft)
 @media(max-width:650px){.dashboard-app .intelligence-insights-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
  .dashboard-app .intelligence-insight-card{padding:12px;min-height:145px}}
 @media(max-width:355px){.dashboard-app .intelligence-insights-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Responsive account profile forms */
+.dashboard-app .profile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+.dashboard-app .profile-form {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+}
+.dashboard-app .profile-form-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px 20px;
+}
+.dashboard-app .profile-form--password .profile-form-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.dashboard-app .profile-form-field {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  gap: 7px;
+  margin: 0;
+  color: #405269;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+.dashboard-app .profile-form-field input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #dbe2eb;
+  border-radius: 11px;
+  color: #1a3c60;
+  background: #fff;
+  font-size: 14px;
+}
+.dashboard-app .profile-form-field input:focus-visible {
+  outline: 3px solid rgba(11, 100, 153, .14);
+  border-color: #0b6499;
+}
+.dashboard-app .profile-form-field input:disabled {
+  color: #64748b;
+  background: #f3f6fa;
+}
+.dashboard-app .profile-form > .button {
+  justify-self: start;
+  margin-top: 0;
+}
+@media (max-width: 680px) {
+  .dashboard-app .profile-grid { gap: 14px; }
+  .dashboard-app .profile-form-fields,
+  .dashboard-app .profile-form--password .profile-form-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .dashboard-app .profile-avatar-row {
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .dashboard-app .profile-avatar-row > div { min-width: 0; }
+  .dashboard-app .profile-avatar-preview {
+    width: 76px;
+    height: 76px;
+    flex-basis: 76px;
+  }
+  .dashboard-app .profile-avatar-row p { font-size: 12px; }
+  .dashboard-app .profile-form > .button {
+    justify-self: stretch;
+    width: 100%;
+  }
+}
