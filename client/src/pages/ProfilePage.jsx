@@ -83,19 +83,23 @@ export default function ProfilePage() {
           </div>
         </div>
       </section>
-      <form className="panel" onSubmit={saveProfile}>
+      <form className="panel profile-form profile-form--contact" onSubmit={saveProfile}>
         <div className="panel-heading"><div><span className="eyebrow">Identity</span><h3>Contact details</h3></div><Icon name="shield" size={20} /></div>
-        <label>Name<input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
-        <label>Email<input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
-        <label>Phone<input required value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></label>
-        <label>Role<input disabled value={user?.roles?.map((role) => role.name).join(', ') || user?.role?.name || '—'} /></label>
+        <div className="profile-form-fields">
+          <label className="profile-form-field">Name<input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
+          <label className="profile-form-field">Email<input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
+          <label className="profile-form-field">Phone<input required value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></label>
+          <label className="profile-form-field">Role<input disabled value={user?.roles?.map((role) => role.name).join(', ') || user?.role?.name || '—'} /></label>
+        </div>
         <button className="button dark" disabled={saving}>{saving ? 'Saving…' : 'Save profile'} <Icon name="check" size={16} /></button>
       </form>
-      <form className="panel" onSubmit={changePassword}>
+      <form className="panel profile-form profile-form--password" onSubmit={changePassword}>
         <div className="panel-heading"><div><span className="eyebrow">Security</span><h3>Change password</h3></div><Icon name="shield" size={20} /></div>
-        <label>Current password<input required type="password" autoComplete="current-password" value={password.current_password} onChange={(event) => setPassword({ ...password, current_password: event.target.value })} /></label>
-        <label>New password<input required minLength="8" type="password" autoComplete="new-password" value={password.new_password} onChange={(event) => setPassword({ ...password, new_password: event.target.value })} /></label>
-        <label>Confirm new password<input required minLength="8" type="password" autoComplete="new-password" value={password.confirm} onChange={(event) => setPassword({ ...password, confirm: event.target.value })} /></label>
+        <div className="profile-form-fields">
+          <label className="profile-form-field">Current password<input required type="password" autoComplete="current-password" value={password.current_password} onChange={(event) => setPassword({ ...password, current_password: event.target.value })} /></label>
+          <label className="profile-form-field">New password<input required minLength="8" type="password" autoComplete="new-password" value={password.new_password} onChange={(event) => setPassword({ ...password, new_password: event.target.value })} /></label>
+          <label className="profile-form-field">Confirm new password<input required minLength="8" type="password" autoComplete="new-password" value={password.confirm} onChange={(event) => setPassword({ ...password, confirm: event.target.value })} /></label>
+        </div>
         <button className="button primary">Update password <Icon name="shield" size={16} /></button>
       </form>
     </div>
