@@ -43,7 +43,7 @@ body {font-family:var(--ts-font);color:var(--ink);background:var(--surface-soft)
 /* The logo artwork is preserved; only foreground copy uses Open Sans. */
 .ts-auth-root, .ts-home {font-family:var(--ts-font)!important}
 :where(.dashboard-main,.dashboard-content,.workspace-page,.public-site main,.public-site .container-wide,.panel,.content-card,.data-table,.table-scroll) {min-width:0}
-:where(.dashboard-app,.public-site) {max-width:100%;overflow-x:clip}
+:where(.dashboard-app,.public-site,.ts-auth-root) {max-width:100%;overflow-x:clip}
 :where(.dashboard-content,.public-site main) :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),textarea,select) {
   max-width:100%;min-width:0;min-height:42px;border-color:#d6dee8;border-radius:11px;
   color:var(--ts-navy-900);background-color:#fff;
