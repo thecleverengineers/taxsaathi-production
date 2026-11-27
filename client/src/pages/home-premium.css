@@ -276,7 +276,6 @@
  .ts-home-final-cta h2{font-size:clamp(31px,9vw,46px)}
  .ts-home-final-cta p{font-size:12px}
  .ts-home-cta-actions{gap:10px}
- .ts-home-site .public-nav{background:#0c2850}
  .ts-home-site .nav-cta{min-width:0}
 }
 @media (max-width:380px){
