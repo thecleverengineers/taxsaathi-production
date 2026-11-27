@@ -142,10 +142,6 @@
 
 @media (max-width: 960px) {
   .ts-services-category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .public-site.ts-services-site .public-nav .public-login-trigger {
-    width: 44px; min-height: 44px; padding: 0; background: transparent;
-  }
-  .public-site.ts-services-site .public-nav .public-login-trigger span { display: none; }
 }
 
 @media (max-width: 680px) {
