@@ -1116,3 +1116,54 @@ body {font-family:var(--ts-font);color:var(--ink);background:var(--surface-soft)
     width: 100%;
   }
 }
+
+/* One home-page header treatment across all public routes. */
+.public-site.ts-brand-site .public-header {
+  background: linear-gradient(135deg, #081c39, #102e57);
+  border-bottom: 1px solid #a4772c4d;
+}
+.public-site.ts-brand-site .public-nav {
+  color: #f8f0dc;
+  border: 1px solid #e3b75a59;
+  border-radius: 22px;
+  background: linear-gradient(120deg, #0c2850, #142f55 70%, #0b2449);
+  box-shadow: 0 14px 32px rgba(6, 21, 45, .17);
+}
+.public-site.ts-brand-site .brand-mark-link strong,
+.public-site.ts-brand-site .public-nav-link {
+  color: #f7edda;
+}
+.public-site.ts-brand-site .brand-mark-link small {
+  color: #dccba6;
+}
+.public-site.ts-brand-site .brand-logo-frame {
+  border-color: #c69b52;
+  border-radius: 50%;
+  background: #081b39;
+}
+.public-site.ts-brand-site .brand-logo-frame img {
+  padding: 0;
+  object-fit: contain;
+}
+.public-site.ts-brand-site .public-nav-link:hover,
+.public-site.ts-brand-site .public-nav-link.active {
+  color: #f6d27d;
+  background: rgba(225, 174, 78, .11);
+}
+.public-site.ts-brand-site .public-nav .public-sidebar-trigger {
+  border-color: rgba(190, 151, 79, .55);
+  color: #f6d991;
+  background: rgba(255, 255, 255, .07);
+}
+.public-site.ts-brand-site .public-nav .public-sidebar-trigger:hover {
+  border-color: #d9b56b;
+  background: rgba(255, 255, 255, .13);
+}
+.public-site.ts-brand-site .public-nav .public-sidebar-trigger:focus-visible {
+  outline: 3px solid #f1ce7a;
+  outline-offset: 2px;
+}
+
+@media (max-width: 680px) {
+  .public-site.ts-brand-site .public-nav { border-radius: 15px; }
+}
