@@ -144,7 +144,7 @@
  .ts-auth-input-wrap{min-height:56px}
  .ts-auth-input-wrap input{min-height:52px}
 }
-@media (max-width:760px){
+@media (max-width:760px), (max-width:1050px) and (pointer: coarse) {
  .ts-auth-root {display:flex;flex-direction:column;min-height:100dvh;background:#0c244a}
  .ts-auth-showcase {min-height:0;height:clamp(290px,42vh,420px);padding:24px 15px 0;justify-content:flex-start}
  .ts-auth-ribbon-one{border-width:5px;width:135%;height:140%;left:-57%;top:-84%}
