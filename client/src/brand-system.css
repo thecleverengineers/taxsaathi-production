@@ -1167,3 +1167,171 @@ body {font-family:var(--ts-font);color:var(--ink);background:var(--surface-soft)
 @media (max-width: 680px) {
   .public-site.ts-brand-site .public-nav { border-radius: 15px; }
 }
+
+/* Compact service cards on phones: align the thumbnail with the service details. */
+@media (max-width: 680px) {
+  .ts-services .service-grid.ts-services-results {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .ts-services .service-grid.ts-services-results .service-card {
+    display: grid;
+    gap: 12px;
+    min-height: 0;
+    padding: 14px;
+    border: 1px solid #e5e1d8;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 3px 12px rgba(15, 35, 61, .055);
+  }
+  .ts-services .service-grid.ts-services-results .service-card-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 6px;
+    min-width: 0;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-main.has-service-image {
+    grid-template-columns: 68px minmax(0, 1fr);
+    column-gap: 12px;
+    row-gap: 5px;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-icon {
+    position: relative;
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    width: 68px;
+    height: 68px;
+    aspect-ratio: 1;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid #eee5d2;
+    border-radius: 12px;
+    background: #fbf7ed;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-icon img {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 5px;
+    object-fit: contain;
+    object-position: center;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-meta {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 7px;
+    min-width: 0;
+    margin: 0;
+    color: #85642e;
+    font-size: 9px;
+    line-height: 1.35;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-meta span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-meta b {
+    flex: 0 0 auto;
+    padding: 4px 7px;
+    border-radius: 999px;
+    color: #245386;
+    background: #edf4fb;
+    font-size: 8px;
+    line-height: 1.2;
+  }
+  .ts-services .service-grid.ts-services-results .service-card h3 {
+    grid-column: 2;
+    grid-row: 2;
+    display: -webkit-box;
+    overflow: hidden;
+    margin: 0;
+    color: #102848;
+    font-size: 15px;
+    font-weight: 750;
+    line-height: 1.28;
+    text-overflow: ellipsis;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .ts-services .service-grid.ts-services-results .service-card p {
+    grid-column: 2;
+    grid-row: 3;
+    display: -webkit-box;
+    overflow: hidden;
+    min-height: 0;
+    margin: 0;
+    color: #66758a;
+    font-size: 11px;
+    line-height: 1.4;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-main:not(.has-service-image) .service-card-meta,
+  .ts-services .service-grid.ts-services-results .service-card-main:not(.has-service-image) .service-card h3,
+  .ts-services .service-grid.ts-services-results .service-card-main:not(.has-service-image) .service-card p {
+    grid-column: 1;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-bottom {
+    min-width: 0;
+    margin: 0;
+    padding-top: 10px;
+    border-top: 1px solid #ece8df;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-price-row {
+    align-items: center;
+    gap: 8px;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-price-row strong {
+    color: #a87827;
+    font-size: 16px;
+    line-height: 1.25;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-view {
+    color: #415d7c;
+    font-size: 11px;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    margin-top: 10px;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-width: 0;
+    min-height: 39px;
+    padding: 0 9px;
+    border-radius: 10px;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-action svg {
+    flex: 0 0 auto;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-action.apply {
+    min-height: 41px;
+    border-color: #d7b56f;
+    color: #173354;
+    background: #ead39e;
+    box-shadow: none;
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .ts-services .service-grid.ts-services-results .service-card-action.apply:hover {
+    border-color: #c6a35c;
+    color: #102848;
+    background: #f0dfb8;
+  }
+}
